@@ -23,7 +23,7 @@ jobs:
         check-latest: true
         cache: true
 
-    - name: Compile binary
+    - name: Run tests
       env:
         VRSA_VAULT_AUTH_KUBERNETES_JWTPATH: ${{ runner.temp}}/vrsa-jwt
       run: |
