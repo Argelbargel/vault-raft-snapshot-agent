@@ -39,7 +39,7 @@ func TestTokenAuthReturnsExpirationBasedOnLoginLeaseDuration(t *testing.T) {
 	assert.NoError(t, err, "token-auth failed unexpectedly")
 
 	expectedExpiration := time.Now().Add((time.Second * authApiStub.leaseDuration) / 2)
-	assert.Equal(t, expectedExpiration, expiration)
+	assert.WithinDuration(t, expectedExpiration, expiration, time.Millisecond)
 }
 
 type tokenVaultAuthApiStub struct {
