@@ -20,22 +20,6 @@ on:
         description: "how many days should binaries be retained?"
         type: number
         default: 1
-  push:
-    branches:
-    - '**'
-    tags-ignore:
-    - "**"
-    paths-ignore:
-    - "README.md"
-    - "**Dockerfile"
-    - ".github/workflows/lint.yml"
-    - ".github/workflows/release*.yml"
-  pull_request:
-    paths-ignore:
-    - "Dockerfile"
-    - "**README.md"
-    - ".github/workflows/lint.yml"
-    - ".github/workflows/release*.yml"
 
 concurrency:
   group: compile-${{ github.ref }}
@@ -44,6 +28,8 @@ concurrency:
 jobs:
   compile-binaries:
     runs-on: ubuntu-latest
+    needs:
+    - run-tests
 
     strategy:
       fail-fast: true
