@@ -20,8 +20,7 @@ func newVaultAPIImpl(address string, insecure bool) (*vaultAPIImpl, error) {
 		Insecure: insecure,
 	}
 
-	err := apiConfig.ConfigureTLS(tlsConfig)
-	if err != nil {
+	if err := apiConfig.ConfigureTLS(tlsConfig); err != nil {
 		return nil, err
 	}
 

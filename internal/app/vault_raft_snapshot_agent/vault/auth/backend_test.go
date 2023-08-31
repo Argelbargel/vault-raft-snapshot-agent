@@ -2,9 +2,10 @@ package auth
 
 import (
 	"errors"
-	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAuthBackendFailsIfAuthCredentialsFactoryFails(t *testing.T) {
@@ -15,14 +16,11 @@ func TestAuthBackendFailsIfAuthCredentialsFactoryFails(t *testing.T) {
 			return map[string]interface{}{}, errors.New("could not create credentials")
 		},
 	}
-	_, err := auth.Refresh(&authApiStub)
-	if err == nil {
-		t.Fatalf("auth backend did not fail when credentials-factory failed")
-	}
 
-	if authApiStub.triedToLogin {
-		t.Fatalf("auth backend did try to login although credentials-factory failed")
-	}
+	_, err := auth.Refresh(&authApiStub)
+	
+	assert.Error(t, err, "auth backend did not fail when credentials-factory failed")
+	assert.False(t, authApiStub.triedToLogin, "auth backend did try to login although credentials-factory failed")
 }
 
 func TestAuthBackendFailsIfLoginFails(t *testing.T) {
@@ -34,13 +32,9 @@ func TestAuthBackendFailsIfLoginFails(t *testing.T) {
 	}
 
 	_, err := auth.Refresh(&authApiStub)
-	if err == nil {
-		t.Fatalf("auth backend did not fail when login failed")
-	}
 
-	if !authApiStub.triedToLogin {
-		t.Fatalf("auth backend did not try to login")
-	}
+	assert.Error(t, err, "auth backend did not fail when login failed")
+	assert.True(t, authApiStub.triedToLogin, "auth backend did not try to login")
 }
 
 func TestAuthBackendPassesPathAndLoginCredentials(t *testing.T) {
@@ -59,17 +53,10 @@ func TestAuthBackendPassesPathAndLoginCredentials(t *testing.T) {
 	}
 
 	_, err := auth.Refresh(&authApiStub)
-	if err != nil {
-		t.Fatalf("auth backend failed unexpectedly: %v", err)
-	}
 
-	if authApiStub.loginPath != expectedAuthPath {
-		t.Fatalf("auth backend did not pass expected auth-path - expected %s, got %s", expectedAuthPath, authApiStub.loginPath)
-	}
-
-	if !reflect.DeepEqual(authApiStub.loginCredentials, expectedCredentials) {
-		t.Fatalf("auth backend did not pass expected credentials - expected %v, got %v", expectedCredentials, authApiStub.loginCredentials)
-	}
+	assert.NoError(t, err, "auth backend failed unexpectedly")
+	assert.Equal(t, expectedAuthPath, authApiStub.loginPath)
+	assert.Equalf(t, expectedCredentials, authApiStub.loginCredentials, "auth backend did not pass expected credentials")
 }
 
 func TestBackendAuthReturnsExpirationBasedOnLoginLeaseDuration(t *testing.T) {
@@ -82,14 +69,10 @@ func TestBackendAuthReturnsExpirationBasedOnLoginLeaseDuration(t *testing.T) {
 	}
 
 	expiration, err := auth.Refresh(&authApiStub)
-	if err != nil {
-		t.Fatalf("auth backend failed unexpectedly: %v", err)
-	}
+	assert.NoError(t, err, "auth backend failed unexpectedly")
 
-	expectedExpiration := time.Now().Add((time.Second*authApiStub.leaseDuration)/2)
-	if expiration != expectedExpiration {
-		t.Fatalf("auth backend returned unexpected expiration - expected %v got %v", expectedExpiration, expiration)
-	}
+	expectedExpiration := time.Now().Add((time.Second * authApiStub.leaseDuration) / 2)
+	assert.Equal(t, expectedExpiration, expiration)
 }
 
 type backendVaultAuthApiStub struct {

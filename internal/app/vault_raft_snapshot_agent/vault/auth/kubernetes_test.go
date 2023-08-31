@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateDefaultKubernetesAuth(t *testing.T) {
@@ -48,28 +50,16 @@ func TestCreateKubernetesAuthWithMissingJwtPath(t *testing.T) {
 	authApiStub := kubernetesVaultAuthApiStub{}
 
 	auth := createKubernetesAuth(config)
+
 	_, err := auth.Refresh(&authApiStub)
-	if err == nil {
-		t.Fatalf("kubernetes auth refresh does not fail when jwt-file is missing")
-	}
+	assert.Error(t, err, "kubernetes auth refresh does not fail when jwt-file is missing")
 }
 
 func assertKubernetesAuthValues(t *testing.T, expectedLoginPath string, expectedRole string, expectedJwt string, auth authBackend, api kubernetesVaultAuthApiStub) {
-	if auth.name != "Kubernetes" {
-		t.Fatalf("AppRoleAuth has wrong name - expected AppRole, got %v", auth.name)
-	}
-
-	if api.path != expectedLoginPath {
-		t.Fatalf("default path of kubernetes-auth is not approle - got: %v", api.path)
-	}
-
-	if api.role != expectedRole {
-		t.Fatalf("auth did not pass correct role-id - expected %v, got %v", expectedRole, api.role)
-	}
-
-	if api.jwt != expectedJwt {
-		t.Fatalf("auth did not pass correct role-id - expected %v, got %v", expectedJwt, api.jwt)
-	}
+	assert.Equal(t, "Kubernetes", auth.name)
+	assert.Equal(t, expectedLoginPath, api.path)
+	assert.Equal(t, expectedRole, api.role)
+	assert.Equal(t, expectedJwt, api.jwt)
 }
 
 type kubernetesVaultAuthApiStub struct {
@@ -111,8 +101,7 @@ func createJwtFile(t *testing.T, path string, defaultJwt string) (jwt string, cr
 	if len(content) > 0 {
 		return string(content), false
 	} else {
-		_, err := file.Write([]byte(defaultJwt))
-		if err != nil {
+		if _, err := file.Write([]byte(defaultJwt)); err != nil {
 			t.Fatalf("could not write expected secret to %s: %v", path, err)
 		}
 		return defaultJwt, true

@@ -42,8 +42,7 @@ func NewClient(address string, api VaultClientAPI, auth auth.Auth) *VaultClient 
 }
 
 func (c *VaultClient) TakeSnapshot(ctx context.Context, writer io.Writer) error {
-	err := c.refreshAuth()
-	if err != nil {
+	if err := c.refreshAuth(); err != nil {
 		return err
 	}
 

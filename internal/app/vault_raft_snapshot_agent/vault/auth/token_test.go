@@ -4,32 +4,29 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateTokenAuth(t *testing.T) {
 	expectedToken := "test"
-
 	authApiStub := tokenVaultAuthApiStub{}
 
 	auth := createTokenAuth(expectedToken)
-	_, err := auth.Refresh(&authApiStub)
-	if err != nil {
-		t.Fatalf("token-auth failed unexpectedly: %v", err)
-	}
 
-	if authApiStub.token != expectedToken {
-		t.Fatalf("token-auth did not pass expected token - expected %s, got %s", expectedToken, authApiStub.token)
-	}
+	_, err := auth.Refresh(&authApiStub)
+
+	assert.NoError(t, err, "token-auth failed unexpectedly")
+	assert.Equal(t, expectedToken, authApiStub.token)
 }
 
 func TestTokenAuthFailsIfLoginFails(t *testing.T) {
 	authApiStub := tokenVaultAuthApiStub{loginFails: true}
-
 	auth := createTokenAuth("test")
+
 	_, err := auth.Refresh(&authApiStub)
-	if err == nil {
-		t.Fatalf("token-auth did not report error although login failed!")
-	}
+
+	assert.Error(t, err, "token-auth did not report error although login failed!")
 }
 
 func TestTokenAuthReturnsExpirationBasedOnLoginLeaseDuration(t *testing.T) {
@@ -38,14 +35,11 @@ func TestTokenAuthReturnsExpirationBasedOnLoginLeaseDuration(t *testing.T) {
 	auth := createTokenAuth("test")
 
 	expiration, err := auth.Refresh(&authApiStub)
-	if err != nil {
-		t.Fatalf("token-auth failed unexpectedly: %v", err)
-	}
+
+	assert.NoError(t, err, "token-auth failed unexpectedly")
 
 	expectedExpiration := time.Now().Add((time.Second * authApiStub.leaseDuration) / 2)
-	if expiration != expectedExpiration {
-		t.Fatalf("token-auth returned unexpected expiration - expected %v got %v", expectedExpiration, expiration)
-	}
+	assert.Equal(t, expectedExpiration, expiration)
 }
 
 type tokenVaultAuthApiStub struct {

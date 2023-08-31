@@ -91,6 +91,14 @@ uploaders:
 
 (for a complete example with all configuration-options see [complete.yaml](./testdata/complete.yaml))
 
+### Environment variables
+Vault Raft Snapshot Agent supports configuration with environment variables. For some common options there are shortcuts defined:
+- `VAULT_ADDR` configures the url to the vault-server (same as `vault.url`)
+- `AWS_ACCESS_KEY_ID` configures the access key for the AWS uploader (same as `uploaders.aws.credentials.key`)
+- `SECRET_ACCESS_KEY` configures the access secret for the AWS uploader (same as `uploaders.aws.credentials.secret`)
+
+Any other option can be set by prefixing `VRSA_` to the uppercased path to the key and replacing `.` with `_`. For example `VRSA_SNAPSHOTS_FREQUENCY=<value>` configures the snapshot-frequency and `VRSA_VAULT_AUTH_TOKEN=<value>` configures the token authentication for vault.
+
 ### Vault configuration
 ```
 vault:

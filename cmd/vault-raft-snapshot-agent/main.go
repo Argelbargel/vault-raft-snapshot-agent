@@ -1,3 +1,31 @@
+/*
+Vault Raft Snapshot Agent periodically takes snapshots of Vault's raft database.
+It uploads those snaphots to one or more storage locations like a local harddrive
+or an AWS S3 Bucket.
+
+Usage:
+
+    vault-raft-snapshot-agent [flags] [options]
+
+The flags are:
+
+    -v, -version
+		Prints version information and exits
+
+The options are:
+
+	-c -config <file>
+		Specifies the config-file to use. 
+
+If no config file is explicitly specified, the program looks for configuration-files
+with the name `snapshot` and the extensions supported by [viper]
+in the current working directory or in /etc/vault.d/snapshots.
+
+For details on how to configure the program see the [README]
+
+[viper]: https://github.com/spf13/viper
+[README]: https://github.com/Argelbargel/vault-raft-snapshot-agent/README.md
+*/
 package main
 
 import (

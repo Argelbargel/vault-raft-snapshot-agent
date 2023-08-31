@@ -8,7 +8,7 @@ import (
 type KubernetesAuthConfig struct {
 	Path    string `default:"kubernetes" mapstructure:",omitempty"`
 	Role    string `validate:"required_if=Empty false"`
-	JWTPath string `default:"/var/run/secrets/kubernetes.io/serviceaccount/token" mapstructure:",omitempty" validate:"omitempty,file"`
+	JWTPath string `default:"/var/run/secrets/kubernetes.io/serviceaccount/token" mapstructure:"," validate:"omitempty,file"`
 	Empty   bool
 }
 

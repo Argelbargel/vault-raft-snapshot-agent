@@ -5,10 +5,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/upload"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/vault"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/vault/auth"
@@ -18,55 +18,44 @@ var defaultJwtPath string = "/var/run/secrets/kubernetes.io/serviceaccount/token
 
 func TestReadEmptyConfig(t *testing.T) {
 	file := "../../../testdata/empty.yaml"
-	config, err := ReadConfig(file)
-	if err == nil {
-		t.Fatalf(`ReadConfig(%s) should return error for empty file, got %v`, file, config)
-	}
-	t.Logf("ReadConfig(%s) returned error: %v", file, err)
+	_, err := ReadConfig(file)
+
+	assert.Error(t, err, `ReadConfig(%s) should return error for empty file`, file)
 }
 
 func TestReadConfigWithInvalidAddr(t *testing.T) {
 	file := "../../../testdata/invalid-addr.yaml"
-	config, err := ReadConfig(file)
-	if err == nil {
-		t.Fatalf(`ReadConfig(%s) should return error for config with invalid addr, got %v`, file, config)
-	}
-	t.Logf("ReadConfig(%s) returned error: %v", file, err)
+	_, err := ReadConfig(file)
+
+	assert.Error(t, err, `ReadConfig(%s) should return error for config with invalid addr`, file)
 }
+
 func TestReadConfigWithoutUploaders(t *testing.T) {
 	file := "../../../testdata/no-uploaders.yaml"
-	config, err := ReadConfig(file)
-	if err == nil {
-		t.Fatalf(`ReadConfig(%s) should return error for config without uploaders, got %v`, file, config)
-	}
-	t.Logf("ReadConfig(%s) returned error: %v", file, err)
+	_, err := ReadConfig(file)
+
+	assert.Error(t, err, `ReadConfig(%s) should return error for config without uploaders`, file)
 }
 
 func TestReadConfigWithInvalidUploader(t *testing.T) {
 	file := "../../../testdata/invalid-uploader.yaml"
-	config, err := ReadConfig(file)
-	if err == nil {
-		t.Fatalf(`ReadConfig(%s) should return error for config with invalid uploader, got %v`, file, config)
-	}
-	t.Logf("ReadConfig(%s) returned error: %v", file, err)
+	_, err := ReadConfig(file)
+
+	assert.Error(t, err, `ReadConfig(%s) should return error for config with invalid uploader`, file)
 }
 
 func TestReadConfigWithInvalidLocalUploadPath(t *testing.T) {
 	file := "../../../testdata/invalid-local-upload-path.yaml"
-	config, err := ReadConfig(file)
-	if err == nil {
-		t.Fatalf(`ReadConfig(%s) should return error for config with invalid local upload-path, got %v`, file, config)
-	}
-	t.Logf("ReadConfig(%s) returned error: %v", file, err)
+	_, err := ReadConfig(file)
+
+	assert.Error(t, err, `ReadConfig(%s) should return error for config with invalid local upload-path`, file)
 }
 
 func TestReadConfigWithInvalidAuth(t *testing.T) {
 	file := "../../../testdata/invalid-auth.yaml"
-	config, err := ReadConfig(file)
-	if err == nil {
-		t.Fatalf(`ReadConfig(%s) should return error for config with invalid auth, got %v`, file, config)
-	}
-	t.Logf("ReadConfig(%s) returned error: %v", file, err)
+	_, err := ReadConfig(file)
+
+	assert.Error(t, err, `ReadConfig(%s) should return error for config with invalid auth`, file)
 }
 
 func TestReadCompleteConfig(t *testing.T) {
@@ -120,13 +109,9 @@ func TestReadCompleteConfig(t *testing.T) {
 
 	file := "../../../testdata/complete.yaml"
 	config, err := ReadConfig(file)
-	if err != nil {
-		t.Fatalf("ReadConfig(%s) failed unexpectedly: %v", file, err)
-	}
 
-	if !reflect.DeepEqual(expectedConfig, config) {
-		t.Fatalf("ReadConfig returned unexpected config - expected %v, got %v", expectedConfig, config)
-	}
+	assert.NoError(t, err, "ReadConfig(%s) failed unexpectedly", file)
+	assert.Equalf(t, expectedConfig, config, "ReadConfig returned unexpected config")
 }
 
 func TestReadConfigSetsDefaultValues(t *testing.T) {
@@ -166,39 +151,26 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 
 	file := "../../../testdata/defaults.yaml"
 	config, err := ReadConfig(file)
-	if err != nil {
-		t.Fatalf("ReadConfig(%s) failed unexpectedly: %v", file, err)
-	}
 
-	if !reflect.DeepEqual(expectedConfig, config) {
-		t.Fatalf("ReadConfig returned unexpected config - expected %v, got %v", expectedConfig, config)
-	}
+	assert.NoError(t, err, "ReadConfig(%s) failed unexpectedly", file)
+	assert.Equalf(t, expectedConfig, config, "ReadConfig returned unexpected config")
 }
 
 func TestReadConfigBindsEnvVariables(t *testing.T) {
 	os.Setenv("VAULT_ADDR", "http://from.env:8200")
 	os.Setenv("AWS_ACCESS_KEY_ID", "env-key")
 	os.Setenv("SECRET_ACCESS_KEY", "env-secret")
+	os.Setenv("VRSA_VAULT_AUTH_KUBERNETES_ROLE", "test")
+	os.Setenv("VRSA_VAULT_AUTH_KUBERNETES_JWTPATH", "./jwt")
 
 	file := "../../../testdata/envvars.yaml"
 	config, err := ReadConfig(file)
-	if err != nil {
-		t.Fatalf("ReadConfig(%s) failed unexpectedly: %v", file, err)
-	}
+	assert.NoError(t, err, "ReadConfig(%s) failed unexpectedly", file)
 
-	if config.Vault.Url != os.Getenv("VAULT_ADDR") {
-		t.Fatalf("ReadConfig did not bind env-var VAULT_ADDR - expected %s, got %s", os.Getenv("VAULT_ADDR"), config.Vault.Url)
-	}
-
-	if config.Uploaders.AWS.Credentials.Key != os.Getenv("AWS_ACCESS_KEY_ID") {
-		t.Fatalf("ReadConfig did not bind env-var AWS_ACCESS_KEY_ID - expected %s, got %s", os.Getenv("AWS_ACCESS_KEY_ID"), config.Uploaders.AWS.Credentials.Key)
-	}
-
-	if config.Uploaders.AWS.Credentials.Secret != os.Getenv("SECRET_ACCESS_KEY") {
-		t.Fatalf("ReadConfig did not bind env-var SECRET_ACCESS_KEY - expected %s, got %s", os.Getenv("SECRET_ACCESS_KEY"), config.Uploaders.AWS.Credentials.Secret)
-	}
-
-
+	assert.Equal(t, os.Getenv("VAULT_ADDR"), config.Vault.Url, "ReadConfig did not bind env-var VAULT_ADDR")
+	assert.Equal(t, os.Getenv("AWS_ACCESS_KEY_ID"), config.Uploaders.AWS.Credentials.Key, "ReadConfig did not bind env-var AWS_ACCESS_KEY_ID")
+	assert.Equal(t, os.Getenv("SECRET_ACCESS_KEY"), config.Uploaders.AWS.Credentials.Secret, "ReadConfig did not bind env-var SECRET_ACCESS_KEY")
+	assert.Equal(t, os.Getenv("VRSA_VAULT_AUTH_KUBERNETES_JWTPATH"), config.Vault.Auth.Kubernetes.JWTPath, "ReadConfig did not bind env-var VRSA_VAULT_AUTH_KUBERNETES_JWTPATH")
 }
 
 func init() {

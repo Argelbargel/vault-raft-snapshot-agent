@@ -3,16 +3,10 @@ package vault_raft_snapshot_agent
 import (
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/upload"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/vault"
-	"github.com/creasty/defaults"
-	"github.com/fsnotify/fsnotify"
-	"github.com/go-playground/validator/v10"
-	"github.com/spf13/viper"
 )
 
 type SnapshotterConfig struct {
@@ -27,58 +21,36 @@ type SnapshotConfig struct {
 	Timeout   time.Duration `default:"60s" mapstructure:",omitempty"`
 }
 
+var parser rattlesnake = newRattlesnake("snapshot", "VRSA", "/etc/vault.d/", ".")
+
 // ReadConfig reads the configuration file
 func ReadConfig(file string) (SnapshotterConfig, error) {
+	parser.BindEnv("vault.url", "VAULT_ADDR")
+	parser.BindEnv("uploaders.aws.credentials.key", "AWS_ACCESS_KEY_ID")
+	parser.BindEnv("uploaders.aws.credentials.secret", "SECRET_ACCESS_KEY")
+
 	config := SnapshotterConfig{}
 
-	viper.AddConfigPath("/etc/vault.d/")
-	viper.AddConfigPath(".")
-	viper.SetConfigName("snapshot")
-	viper.BindEnv("vault.url", "VAULT_ADDR")
-	viper.BindEnv("uploaders.aws.credentials.key", "AWS_ACCESS_KEY_ID")
-	viper.BindEnv("uploaders.aws.credentials.secret", "SECRET_ACCESS_KEY")
-
 	if file != "" {
-		file, err := filepath.Abs(file)
-		if err != nil {
-			return config, fmt.Errorf("could not build absolute path to config-file %s: %s", file, err)
+		if err := parser.SetConfigFile(file); err != nil {
+			return config, err
 		}
-
-		viper.SetConfigFile(file)
 	}
 
-	err := viper.ReadInConfig()
-	if err != nil {
-		return config, fmt.Errorf("error reading config file: %s", err)
+	if err := parser.ReadInConfig(); err != nil {
+		if parser.IsConfigurationNotFoundError(err) {
+			if file != "" {
+				return config, err
+			} else {
+				log.Printf("Could not find any configuration file, will create configuration based solely on environment...")
+			}
+		} else {
+			return config, err
+		}
 	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return config, fmt.Errorf("could not determine current working directory: %s", err)
-	}
-
-	configDir := filepath.Dir(file)
-	if err := os.Chdir(configDir); err != nil {
-		return config, fmt.Errorf("could not switch working-directory to %s to parse configuration: %s", configDir, err)
-	}
-
-	defer os.Chdir(wd)
-	return unmarshalConfig(config)
-}
-
-func unmarshalConfig(config SnapshotterConfig) (SnapshotterConfig, error) {
-	err := viper.Unmarshal(&config)
-	if err != nil {
-		return config, err
-	}
-
-	if err := defaults.Set(&config); err != nil {
-		return config, fmt.Errorf("could not set configuration's default-values: %s", err)
-	}
-
-	validate := validator.New()
-	if err := validate.Struct(config); err != nil {
-		return config, err
+	if err := parser.Unmarshal(&config); err != nil {
+		return config, fmt.Errorf("could not unmarshal configuration: %s", err)
 	}
 
 	if !config.Uploaders.HasUploaders() {
@@ -89,18 +61,15 @@ func unmarshalConfig(config SnapshotterConfig) (SnapshotterConfig, error) {
 }
 
 func WatchConfigAndReconfigure(snapshotter *Snapshotter) {
-	viper.OnConfigChange(func(e fsnotify.Event) {
-		config, err := unmarshalConfig(SnapshotterConfig{})
-		if err != nil {
-			log.Printf("ignoring invalid configuration-change: %v", err)
+	parser.OnConfigChange(func() {
+		config := SnapshotterConfig{}
+		
+		if err := parser.Unmarshal(&config); err != nil {
+			log.Printf("Ignoring configuration change as configuration in %s is invalid: %v", parser.ConfigFileUsed(), err)
 		}
 
-		err = snapshotter.Reconfigure(config)
-		if err != nil {
-			log.Fatalf("error reconfiguring snapshotter: %v", err)
+		if err := snapshotter.Reconfigure(config); err != nil {
+			log.Fatalf("Cound not reconfigure snapshotter from %s: %v", parser.ConfigFileUsed(), err)
 		}
-
 	})
-	viper.WatchConfig()
-
 }

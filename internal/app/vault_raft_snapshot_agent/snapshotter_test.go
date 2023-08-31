@@ -10,6 +10,7 @@ import (
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/upload"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/vault"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/vault/auth"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSnapshotterLocksTakeSnapshot(t *testing.T) {
@@ -40,16 +41,10 @@ func TestSnapshotterLocksTakeSnapshot(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		err := <-errs
-		if err != nil {
-			t.Fatalf("TakeSnapshot failed unexpectedly: %s", err)
-		}
+		assert.NoError(t, err, "TakeSnapshot failed unexpectedly")
 	}
 
-	runtime := time.Now().Sub(start)
-	expectedRuntime := clientAPIStub.snapshotRuntime * 2
-	if runtime < expectedRuntime {
-		t.Fatalf("TakeSnapshot did not prevent synchronous snapshots - expected runtime: %d, was: %d", expectedRuntime, runtime)
-	}
+	assert.GreaterOrEqual(t, time.Now().Sub(start), clientAPIStub.snapshotRuntime*2, "TakeSnapshot did not prevent synchronous snapshots")
 }
 
 func TestSnapshotterLocksConfigure(t *testing.T) {
@@ -85,25 +80,15 @@ func TestSnapshotterLocksConfigure(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		err := <-errs
-		if err != nil {
-			t.Fatalf("TakeSnapshot failed unexpectedly: %s", err)
-		}
+		assert.NoError(t, err, "TakeSnapshot failed unexpectedly")
 	}
 
-	runtime := time.Now().Sub(start)
-	expectedRuntime := clientAPIStub.snapshotRuntime + 250
-	if runtime < expectedRuntime {
-		t.Fatalf("TakeSnapshot did not prevent re-configuration during snapshots - expected runtime: %d, was: %d", expectedRuntime, runtime)
-	}
+	assert.GreaterOrEqual(t, time.Now().Sub(start), clientAPIStub.snapshotRuntime+250, "TakeSnapshot did not prevent re-configuration during snapshots")
 
 	frequency, err := snapshotter.TakeSnapshot(context.Background())
-	if err != nil {
-		t.Fatalf("TakeSnapshot failed unexpectedly: %s", err)
-	}
 
-	if frequency != newConfig.Frequency {
-		t.Fatalf("Snaphotter did not re-configure propertly - expected frequency: %v, got: %v", newConfig.Frequency, frequency)
-	}
+	assert.NoError(t, err, "TakeSnapshot failed unexpectedly")
+	assert.Equal(t, newConfig.Frequency, frequency, "Snaphotter did not re-configure propertly")
 }
 
 func TestSnapshotterAbortsAfterTimeout(t *testing.T) {
@@ -127,16 +112,11 @@ func TestSnapshotterAbortsAfterTimeout(t *testing.T) {
 		errs <- err
 	}()
 
-	err := <-errs
-	if err != nil {
-		t.Fatalf("TakeSnapshot failed unexpectedly: %s", err)
-	}
+	assert.NoError(t, <-errs, "TakeSnapshot failed unexpectedly")
 
-	runtime := time.Now().Sub(start)
-	expectedRuntime := config.Timeout * 2 // quite less than runtime more enough to not flicker
-	if runtime > expectedRuntime {
-		t.Fatalf("TakeSnapshot did not abort at timeout - expected runtime: %d, was: %d", expectedRuntime, runtime)
-	}
+	// config.Timeout * 2 is quite less than clientAPIStub.snapshotRuntime 
+	// and big enough so that the test does not flicker
+	assert.LessOrEqual(t, time.Now().Sub(start), config.Timeout * 2, "TakeSnapshot did not abort at timeout")
 }
 
 func TestSnapshotterFailsIfSnapshottingFails(t *testing.T) {
@@ -152,13 +132,9 @@ func TestSnapshotterFailsIfSnapshottingFails(t *testing.T) {
 	snapshotter.Configure(config, vault.NewClient("http://127.0.0.1:8200", &clientAPIStub, nil), []upload.Uploader{&uploaderStub})
 
 	_, err := snapshotter.TakeSnapshot(context.Background())
-	if err == nil {
-		t.Fatalf("TakeSnaphot did not fail although snapshotting failed")
-	}
 
-	if uploaderStub.uploaded {
-		t.Fatalf("TakeSnapshot uploaded although snapshotting failed")
-	}
+	assert.Error(t, err, "TakeSnaphot did not fail although snapshotting failed")
+	assert.False(t, uploaderStub.uploaded,  "TakeSnapshot uploaded although snapshotting failed")
 }
 
 func TestSnapshotterUploadsDataFromSnapshot(t *testing.T) {
@@ -175,13 +151,10 @@ func TestSnapshotterUploadsDataFromSnapshot(t *testing.T) {
 	snapshotter.Configure(config, vault.NewClient("http://127.0.0.1:8200", &clientAPIStub, nil), []upload.Uploader{&uploaderStub})
 
 	_, err := snapshotter.TakeSnapshot(context.Background())
-	if err != nil {
-		t.Fatalf("TakeSnaphot failed unexpectedly: %v", err)
-	}
 
-	if !uploaderStub.uploaded || uploaderStub.uploadData != clientAPIStub.snapshotData {
-		t.Fatalf("TakeSnapshot did not upload or uploaded false data - uploaded %v, expected data: %s, got data: %s", uploaderStub.uploaded, uploaderStub.uploadData, clientAPIStub.snapshotData)
-	}
+	assert.NoError(t, err, "TakeSnaphot failed unexpectedly")
+	assert.True(t, uploaderStub.uploaded, "TakeSnapshot did not upload")
+	assert.Equal(t, clientAPIStub.snapshotData, uploaderStub.uploadData, "TakeSnapshot did upload false data")
 }
 
 func TestSnapshotterContinuesUploadingIfUploadFails(t *testing.T) {
@@ -204,13 +177,10 @@ func TestSnapshotterContinuesUploadingIfUploadFails(t *testing.T) {
 	snapshotter.Configure(config, vault.NewClient("http://127.0.0.1:8200", &clientAPIStub, nil), []upload.Uploader{&uploaderStub1, &uploaderStub2})
 
 	_, err := snapshotter.TakeSnapshot(context.Background())
-	if err == nil {
-		t.Fatalf("TakeSnaphot did not fail although one of the uploaders failed")
-	}
+	assert.Error(t, err, "TakeSnaphot did not fail although one of the uploaders failed")
 
-	if !uploaderStub1.uploaded || !uploaderStub2.uploaded {
-		t.Fatalf("TakeSnapshot did not upload upload to all uploaders: uploader1 %v, uploader2: %v", uploaderStub1.uploaded, uploaderStub2.uploaded)
-	}
+	assert.True(t, uploaderStub1.uploaded, "TakeSnapshot did not upload to first uploader")
+	assert.True(t, uploaderStub2.uploaded, "TakeSnapshot did not upload to second uploader")
 }
 
 func TestSnapshotterReturnsFrequency(t *testing.T) {
@@ -226,9 +196,7 @@ func TestSnapshotterReturnsFrequency(t *testing.T) {
 
 	frequency, _ := snapshotter.TakeSnapshot(context.Background())
 
-	if frequency != config.Frequency {
-		t.Fatalf("TakeSnapshot did return wron frequency: expected %v, got: %v", config.Frequency, frequency)
-	}
+	assert.Equal(t, config.Frequency, frequency)
 }
 
 type snapshotterVaultClientAPIStub struct {
@@ -239,8 +207,7 @@ type snapshotterVaultClientAPIStub struct {
 
 func (stub *snapshotterVaultClientAPIStub) TakeSnapshot(ctx context.Context, writer io.Writer) error {
 	if stub.snapshotData != "" {
-		_, err := writer.Write([]byte(stub.snapshotData))
-		if err != nil {
+		if _, err := writer.Write([]byte(stub.snapshotData)); err != nil {
 			return err
 		}
 	}

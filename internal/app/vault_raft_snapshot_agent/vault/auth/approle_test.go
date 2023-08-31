@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateDefaultAppRoleAuth(t *testing.T) {
@@ -23,26 +25,14 @@ func TestCreateDefaultAppRoleAuth(t *testing.T) {
 	auth := createAppRoleAuth(config)
 	auth.Refresh(&authApiStub)
 
-
 	assertAppRoleAuthValues(t, expectedLoginPath, expectedRoleId, expectedSecretId, auth, authApiStub)
 }
 
 func assertAppRoleAuthValues(t *testing.T, expectedLoginPath string, expectedRoleId string, expectedSecretId string, auth authBackend, api appRoleVaultAuthApiStub) {
-	if auth.name != "AppRole" {
-		t.Fatalf("AppRoleAuth has wrong name - expected AppRole, got %v", auth.name)
-	}
-
-	if api.path != expectedLoginPath {
-		t.Fatalf("default path of AppRoleAuth is not approle - got: %v", api.path)
-	}
-
-	if api.roleId != expectedRoleId {
-		t.Fatalf("auth did not pass correct role-id - expected %v, got %v", expectedRoleId, api.roleId)
-	}
-
-	if api.secretId != expectedSecretId {
-		t.Fatalf("auth did not pass correct role-id - expected %v, got %v", expectedSecretId, api.secretId)
-	}
+	assert.Equal(t, "AppRole", auth.name)
+	assert.Equal(t, expectedLoginPath, api.path)
+	assert.Equal(t, expectedRoleId, api.roleId)
+	assert.Equal(t, expectedSecretId, api.secretId)
 }
 
 type appRoleVaultAuthApiStub struct {
