@@ -1,4 +1,4 @@
-name: Lint source with golangci-lint
+name: Lint Source
 on:
   workflow_dispatch:
   workflow_call:
