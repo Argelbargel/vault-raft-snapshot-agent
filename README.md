@@ -142,14 +142,12 @@ An AppRole allows the snapshot agent to automatically rotate tokens to avoid lon
 
 To allow the App-Role access to the snapshots you should run the following commands on your vault-cluster:
 ```
-Then run:
-```
 vault write auth/approle/role/snapshot token_policies="snapshots"
 vault read auth/approle/role/snapshot/<your role-id>
 vault write -f auth/approle/role/snapshot/<your secret-id>
 ```
 
-#### Kubernetes authentication
+##### Kubernetes authentication
 To enable Kubernetes authentication mode, you should follow the steps from [the Vault docs](https://www.vaultproject.io/docs/auth/kubernetes#configuration) and create the appropriate policies and roles.
 
 - `role` Specifies vault k8s auth role
@@ -162,11 +160,11 @@ To allow kubernetes access to the snapshots you should run the following command
 ```
 Depending on your setup you can restrict access to specific service-account-names and/or namespaces.
 
-#### Token authentication
+##### Token authentication
 - `token` Specifies the token used to login
 
 
-## Snapshot configuration
+### Snapshot configuration
 ```
 snapshots:
   frequency: "<duration>"
