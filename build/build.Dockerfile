@@ -10,4 +10,5 @@ VOLUME /work
 VOLUME /etc/vault.d/
 
 ENV BUILDPLATFORM=$TARGETPLATFORM
+ENV GOPATH=/work/go
 ENTRYPOINT ["/bin/build.sh", "--build-dir", "/build", "--dist-dir", "/dist", "--work-dir", "/work"]

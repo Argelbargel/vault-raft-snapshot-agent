@@ -57,7 +57,6 @@ export CGO_ENABLED=0
 export GOOS=$(dirname "$PLATFORM")
 export GOARCH=$(basename "$PLATFORM")
 export GOFLAGS="-buildvcs=false"
-export GOPATH=$WORK_DIR/go
 
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
