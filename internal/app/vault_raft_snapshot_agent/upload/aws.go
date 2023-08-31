@@ -17,10 +17,10 @@ import (
 
 type AWSConfig struct {
 	Credentials             AWSCredentialsConfig `default:"{\"Empty\": true}"`
-	Endpoint                string               `validate:"required_if=Empty false"`
 	Region                  string               `validate:"required_if=Empty false"`
 	Bucket                  string               `validate:"required_if=Empty false"`
 	KeyPrefix               string               `mapstructure:",omitifempty"`
+	Endpoint                string               `mapstructure:",omitifempty"`
 	UseServerSideEncryption bool
 	ForcePathStyle          bool
 	Empty                   bool
@@ -52,16 +52,11 @@ func newAWSUploader(config AWSConfig) (*awsUploader, error) {
 		clientConfig.Credentials = creds
 	}
 
-	if config.Endpoint != "" {
-		clientConfig.EndpointResolverWithOptions = aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-			return aws.Endpoint{
-				URL: config.Endpoint,
-			}, nil
-		})
-	}
-
 	client := s3.NewFromConfig(clientConfig, func(o *s3.Options) {
 		o.UsePathStyle = config.ForcePathStyle
+		if config.Endpoint != "" {
+			o.BaseEndpoint = aws.String(config.Endpoint)
+		}
 	})
 
 	keyPrefix := ""

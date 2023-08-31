@@ -44,7 +44,7 @@ func TestSnapshotterLocksTakeSnapshot(t *testing.T) {
 		assert.NoError(t, err, "TakeSnapshot failed unexpectedly")
 	}
 
-	assert.GreaterOrEqual(t, time.Now().Sub(start), clientAPIStub.snapshotRuntime*2, "TakeSnapshot did not prevent synchronous snapshots")
+	assert.GreaterOrEqual(t, time.Since(start), clientAPIStub.snapshotRuntime*2, "TakeSnapshot did not prevent synchronous snapshots")
 }
 
 func TestSnapshotterLocksConfigure(t *testing.T) {
@@ -86,7 +86,7 @@ func TestSnapshotterLocksConfigure(t *testing.T) {
 		assert.NoError(t, err, "TakeSnapshot failed unexpectedly")
 	}
 
-	assert.GreaterOrEqual(t, time.Now().Sub(start), clientAPIStub.snapshotRuntime+250, "TakeSnapshot did not prevent re-configuration during snapshots")
+	assert.GreaterOrEqual(t, time.Since(start), clientAPIStub.snapshotRuntime+250, "TakeSnapshot did not prevent re-configuration during snapshots")
 
 	frequency, err := snapshotter.TakeSnapshot(context.Background())
 
@@ -119,7 +119,7 @@ func TestSnapshotterAbortsAfterTimeout(t *testing.T) {
 
 	// config.Timeout * 2 is quite less than clientAPIStub.snapshotRuntime
 	// and big enough so that the test does not flicker
-	assert.LessOrEqual(t, time.Now().Sub(start), config.Timeout*2, "TakeSnapshot did not abort at timeout")
+	assert.LessOrEqual(t, time.Since(start), config.Timeout*2, "TakeSnapshot did not abort at timeout")
 }
 
 func TestSnapshotterFailsIfSnapshottingFails(t *testing.T) {

@@ -26,14 +26,16 @@ func TestClientRefreshesAuthAfterTokenExpires(t *testing.T) {
 		tokenExpiration: time.Now().Add(time.Second * 1),
 	}
 
-	client.TakeSnapshot(context.Background(), bufio.NewWriter(&bytes.Buffer{}))
+	err := client.TakeSnapshot(context.Background(), bufio.NewWriter(&bytes.Buffer{}))
 
+	assert.NoError(t, err, "TakeSnapshot failed unexpectedly")
 	assertAuthRefresh(t, false, client, auth)
 
 	time.Sleep(time.Second)
 
-	client.TakeSnapshot(context.Background(), bufio.NewWriter(&bytes.Buffer{}))
+	err = client.TakeSnapshot(context.Background(), bufio.NewWriter(&bytes.Buffer{}))
 
+	assert.NoError(t, err, "TakeSnapshot failed unexpectedly")
 	assertAuthRefresh(t, true, client, auth)
 }
 

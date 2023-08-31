@@ -25,11 +25,18 @@ var parser rattlesnake = newRattlesnake("snapshot", "VRSA", "/etc/vault.d/", "."
 
 // ReadConfig reads the configuration file
 func ReadConfig(file string) (SnapshotterConfig, error) {
-	parser.BindEnv("vault.url", "VAULT_ADDR")
-	parser.BindEnv("uploaders.aws.credentials.key", "AWS_ACCESS_KEY_ID")
-	parser.BindEnv("uploaders.aws.credentials.secret", "SECRET_ACCESS_KEY")
-
 	config := SnapshotterConfig{}
+
+	err := parser.BindAllEnv(
+		map[string]string{
+			"vault.url":                        "VAULT_ADDR",
+			"uploaders.aws.credentials.key":    "AWS_ACCESS_KEY_ID",
+			"uploaders.aws.credentials.secret": "SECRET_ACCESS_KEY",
+		},
+	)
+	if err != nil {
+		return config, fmt.Errorf("could not bind environment-variables: %s", err)
+	}
 
 	if file != "" {
 		if err := parser.SetConfigFile(file); err != nil {
@@ -63,7 +70,7 @@ func ReadConfig(file string) (SnapshotterConfig, error) {
 func WatchConfigAndReconfigure(snapshotter *Snapshotter) {
 	parser.OnConfigChange(func() {
 		config := SnapshotterConfig{}
-		
+
 		if err := parser.Unmarshal(&config); err != nil {
 			log.Printf("Ignoring configuration change as configuration in %s is invalid: %v", parser.ConfigFileUsed(), err)
 		}

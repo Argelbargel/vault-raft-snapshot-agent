@@ -12,10 +12,10 @@ snapshots:
   timeout: "120s"
 uploaders:
   aws:
-    endpoint: test-endpoint
     region: test-region
     bucket: test-bucket
     keyPrefix: test-prefix
+    endpoint: test-endpoint
     useServerSideEncryption: true
     forcePathStyle: true
     credentials:

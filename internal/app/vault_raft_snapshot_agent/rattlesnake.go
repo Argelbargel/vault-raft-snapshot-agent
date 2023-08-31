@@ -2,6 +2,7 @@ package vault_raft_snapshot_agent
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,6 +35,15 @@ func newRattlesnake(configName string, envPrefix string, configPaths ...string) 
 
 func (r rattlesnake) BindEnv(input ...string) error {
 	return r.v.BindEnv(input...)
+}
+
+func (r rattlesnake) BindAllEnv(env map[string]string) error {
+	for k, v := range env {
+		if err := r.BindEnv(k, v); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r rattlesnake) SetConfigFile(file string) error {
@@ -71,7 +81,11 @@ func (r rattlesnake) Unmarshal(config interface{}, opts ...viper.DecoderConfigOp
 		return fmt.Errorf("could not switch working-directory to %s to parse configuration: %s", configDir, err)
 	}
 
-	defer os.Chdir(wd)
+	defer func() {
+		if err := os.Chdir(wd); err != nil {
+			log.Fatalf("Could not switch back to working directory %s: %s\n", wd, err)
+		}
+	}()
 
 	if err := r.v.Unmarshal(config, opts...); err != nil {
 		return err
@@ -135,9 +149,9 @@ func flattenAndMergeMap(shadow map[string]bool, m map[string]interface{}, prefix
 	}
 	for k, val := range m {
 		fullKey := prefix + k
-		switch val.(type) {
+		switch val := val.(type) {
 		case map[string]interface{}:
-			m2 = val.(map[string]interface{})
+			m2 = val
 		case map[interface{}]interface{}:
 			m2 = cast.ToStringMap(val)
 		default:

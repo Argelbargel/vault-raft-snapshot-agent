@@ -90,14 +90,4 @@ func (impl *vaultAuthAPIImpl) LoginWithToken(token string) (leaseDuration time.D
 	return time.Duration(ttl), nil
 }
 
-func (impl *vaultAuthAPIImpl) isLeader() (bool, error) {
-	leader, err := impl.client.Sys().Leader()
-	if err != nil {
-		return false, err
-	}
-
-	return leader.IsSelf, nil
-}
-
-
 

@@ -31,8 +31,9 @@ func TestCreateKubernetesAuth(t *testing.T) {
 	authApiStub := kubernetesVaultAuthApiStub{}
 
 	auth := createKubernetesAuth(config)
-	auth.Refresh(&authApiStub)
+	_, err := auth.Refresh(&authApiStub)
 
+	assert.NoError(t, err, "auth-refresh failed unexpectedly")
 	assertKubernetesAuthValues(t, expectedLoginPath, expectedRole, expectedJwt, auth, authApiStub)
 }
 
