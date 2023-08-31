@@ -69,11 +69,6 @@ mkdir -p ${PLATFORM_OUT_DIR}
 echo "Downloading dependencies for $GOOS/$GOARCH..."
 go get -v ./...;
 
-if [ $RUN_TESTS == "true" ]; then
-    echo "Running tests..."
-    go test ./...
-fi
-
 echo "Building go source in $(realpath "$BUILD_DIR") for $GOOS/$GOARCH to $(realpath "$PLATFORM_OUT_DIR")..."
 go build \
     -a \
@@ -83,6 +78,13 @@ go build \
     -o "${PLATFORM_OUT_DIR}" \
     ./...
 echo "Build finished."
+
+if [ $RUN_TESTS == "true" ]; then
+    echo "Running tests..."
+    go test ./...
+fi
+echo "Tests finished."
+
 
 while IFS= read -r -d $'\0' binary; do
     DIST_FILE="$(basename $binary)_${GOOS}_${GOARCH}"
