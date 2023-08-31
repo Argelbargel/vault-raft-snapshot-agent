@@ -8,13 +8,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/upload"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/vault"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/vault/auth"
+	"github.com/stretchr/testify/assert"
 )
 
-var defaultJwtPath string = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+// allow ovveriding "default" kubernetes-jwt-path so that tests on ci do not fail
+func defaultJwtPath() string {
+	defaultJwtPath := os.Getenv("VRSA_VAULT_AUTH_KUBERNETES_JWTPATH")
+	if defaultJwtPath == "" {
+		defaultJwtPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+	}
+
+	return defaultJwtPath
+}
 
 func TestReadEmptyConfig(t *testing.T) {
 	file := "../../../testdata/empty.yaml"
@@ -127,7 +135,7 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 				Kubernetes: auth.KubernetesAuthConfig{
 					Role:    "test-role",
 					Path:    "kubernetes",
-					JWTPath: defaultJwtPath,
+					JWTPath: defaultJwtPath(),
 				},
 			},
 		},
@@ -174,18 +182,18 @@ func TestReadConfigBindsEnvVariables(t *testing.T) {
 }
 
 func init() {
-	if err := os.MkdirAll(filepath.Dir(defaultJwtPath), 0777); err != nil && !errors.Is(err, os.ErrExist) {
-		log.Fatalf("could not create directorys for jwt-file %s: %v", defaultJwtPath, err)
+	if err := os.MkdirAll(filepath.Dir(defaultJwtPath()), 0777); err != nil && !errors.Is(err, os.ErrExist) {
+		log.Fatalf("could not create directorys for jwt-file %s: %v", defaultJwtPath(), err)
 	}
 
-	file, err := os.OpenFile(defaultJwtPath, os.O_RDWR|os.O_CREATE, 0666)
+	file, err := os.OpenFile(defaultJwtPath(), os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		log.Fatalf("could not create jwt-file %s: %v", defaultJwtPath, err)
+		log.Fatalf("could not create jwt-file %s: %v", defaultJwtPath(), err)
 	}
 
 	file.Close()
 
 	if err != nil {
-		log.Fatalf("could not read jwt-file %s: %v", defaultJwtPath, err)
+		log.Fatalf("could not read jwt-file %s: %v", defaultJwtPath(), err)
 	}
 }

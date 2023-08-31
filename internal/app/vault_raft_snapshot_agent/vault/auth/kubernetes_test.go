@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateDefaultKubernetesAuth(t *testing.T) {
+func TestCreateKubernetesAuth(t *testing.T) {
 	authPath := "test"
-	jwtPath := "/tmp/kubernetes"
+	jwtPath := os.TempDir() + "/kubernetes"
 	expectedLoginPath := "auth/" + authPath + "/login"
 	expectedRole := "testRole"
 	expectedJwt, createdFile := createJwtFile(t, jwtPath, "testSecret")

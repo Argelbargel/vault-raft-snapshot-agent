@@ -65,6 +65,8 @@ jobs:
         cache: true
 
     - name: Compile binary
+      env:
+        VRSA_VAULT_AUTH_KUBERNETES_JWTPATH: ${{ runner.temp}}/vrsa-jwt
       run: |
         mkdir ./dist
         chmod +x ./build/build.sh
