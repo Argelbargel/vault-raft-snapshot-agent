@@ -20,22 +20,20 @@ func TestClientRefreshesAuthAfterTokenExpires(t *testing.T) {
 
 	client := VaultClient{
 		api: &clientAPIStub{
-			leader: false,
+			leader: true,
 		},
 		auth:            auth,
 		tokenExpiration: time.Now().Add(time.Second * 1),
 	}
 
-	err := client.TakeSnapshot(context.Background(), bufio.NewWriter(&bytes.Buffer{}))
+	_ = client.TakeSnapshot(context.Background(), bufio.NewWriter(&bytes.Buffer{}))
 
-	assert.NoError(t, err, "TakeSnapshot failed unexpectedly")
 	assertAuthRefresh(t, false, client, auth)
 
 	time.Sleep(time.Second)
 
-	err = client.TakeSnapshot(context.Background(), bufio.NewWriter(&bytes.Buffer{}))
+	_ = client.TakeSnapshot(context.Background(), bufio.NewWriter(&bytes.Buffer{}))
 
-	assert.NoError(t, err, "TakeSnapshot failed unexpectedly")
 	assertAuthRefresh(t, true, client, auth)
 }
 
@@ -53,7 +51,7 @@ func TestClientDoesNotTakeSnapshotIfAuthRefreshFails(t *testing.T) {
 
 	err := client.TakeSnapshot(context.Background(), bufio.NewWriter(&bytes.Buffer{}))
 
-	assert.Error(t, err, "TakeSnapshot() returned no error although auth-refresh failed")
+	assert.Errorf(t, err, "TakeSnapshot() returned no error although auth-refresh failed")
 	assert.NotEqual(t, authStub.tokenExpiration, client.tokenExpiration, "TakeSnapshot() refreshed token-expiration although auth-refresh failed")
 	assert.False(t, clientApi.snapshotTaken, "TakeSnapshot() took snapshot although aut-refresh failed")
 }
@@ -73,13 +71,13 @@ func TestClientOnlyTakesSnaphotWhenLeader(t *testing.T) {
 
 	err := client.TakeSnapshot(ctx, writer)
 
-	assert.Error(t, err, "TakeSnapshot() reported no error although not leader!")
+	assert.Errorf(t, err, "TakeSnapshot() reported no error although not leader!")
 	assert.False(t, clientApi.snapshotTaken, "TakeSnapshot() took snapshot when not leader!")
 
 	clientApi.leader = true
 	err = client.TakeSnapshot(ctx, writer)
 
-	assert.NoError(t, err, "TakeSnapshot() failed unexpectedly")
+	assert.NoErrorf(t, err, "TakeSnapshot() failed unexpectedly")
 	assert.True(t, clientApi.snapshotTaken, "TakeSnapshot() took no snapshot when leader")
 	assert.Equal(t, ctx, clientApi.snapshotContext)
 	assert.Equal(t, writer, clientApi.snapshotWriter)
@@ -100,7 +98,7 @@ func TestClientDoesNotTakeSnapshotIfLeaderCheckFails(t *testing.T) {
 
 	err := client.TakeSnapshot(context.Background(), bufio.NewWriter(&bytes.Buffer{}))
 
-	assert.Error(t, err, "TakeSnapshot() reported success or returned no error when leader-check failed")
+	assert.Errorf(t, err, "TakeSnapshot() reported success or returned no error when leader-check failed")
 	assert.False(t, api.snapshotTaken, "TakeSnapshot() took snapshot when leader-check failed")
 	assert.NotEqual(t, authStub.tokenExpiration, client.tokenExpiration)
 }

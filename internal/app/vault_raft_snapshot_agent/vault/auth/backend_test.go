@@ -19,7 +19,7 @@ func TestAuthBackendFailsIfAuthCredentialsFactoryFails(t *testing.T) {
 
 	_, err := auth.Refresh(&authApiStub)
 
-	assert.Error(t, err, "auth backend did not fail when credentials-factory failed")
+	assert.Errorf(t, err, "auth backend did not fail when credentials-factory failed")
 	assert.False(t, authApiStub.triedToLogin, "auth backend did try to login although credentials-factory failed")
 }
 
@@ -33,7 +33,7 @@ func TestAuthBackendFailsIfLoginFails(t *testing.T) {
 
 	_, err := auth.Refresh(&authApiStub)
 
-	assert.Error(t, err, "auth backend did not fail when login failed")
+	assert.Errorf(t, err, "auth backend did not fail when login failed")
 	assert.True(t, authApiStub.triedToLogin, "auth backend did not try to login")
 }
 
@@ -54,9 +54,9 @@ func TestAuthBackendPassesPathAndLoginCredentials(t *testing.T) {
 
 	_, err := auth.Refresh(&authApiStub)
 
-	assert.NoError(t, err, "auth backend failed unexpectedly")
+	assert.NoErrorf(t, err, "auth backend failed unexpectedly")
 	assert.Equal(t, expectedAuthPath, authApiStub.loginPath)
-	assert.Equalf(t, expectedCredentials, authApiStub.loginCredentials, "auth backend did not pass expected credentials")
+	assert.Equal(t, expectedCredentials, authApiStub.loginCredentials)
 }
 
 func TestBackendAuthReturnsExpirationBasedOnLoginLeaseDuration(t *testing.T) {
@@ -69,7 +69,7 @@ func TestBackendAuthReturnsExpirationBasedOnLoginLeaseDuration(t *testing.T) {
 	}
 
 	expiration, err := auth.Refresh(&authApiStub)
-	assert.NoError(t, err, "auth backend failed unexpectedly")
+	assert.NoErrorf(t, err, "auth backend failed unexpectedly")
 
 	expectedExpiration := time.Now().Add((time.Second * authApiStub.leaseDuration) / 2)
 	assert.WithinDuration(t, expectedExpiration, expiration, time.Millisecond)

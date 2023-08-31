@@ -33,7 +33,7 @@ func TestCreateKubernetesAuth(t *testing.T) {
 	auth := createKubernetesAuth(config)
 	_, err := auth.Refresh(&authApiStub)
 
-	assert.NoError(t, err, "auth-refresh failed unexpectedly")
+	assert.NoErrorf(t, err, "auth-refresh failed unexpectedly")
 	assertKubernetesAuthValues(t, expectedLoginPath, expectedRole, expectedJwt, auth, authApiStub)
 }
 
@@ -53,7 +53,7 @@ func TestCreateKubernetesAuthWithMissingJwtPath(t *testing.T) {
 	auth := createKubernetesAuth(config)
 
 	_, err := auth.Refresh(&authApiStub)
-	assert.Error(t, err, "kubernetes auth refresh does not fail when jwt-file is missing")
+	assert.Errorf(t, err, "kubernetes auth refresh does not fail when jwt-file is missing")
 }
 
 func assertKubernetesAuthValues(t *testing.T, expectedLoginPath string, expectedRole string, expectedJwt string, auth authBackend, api kubernetesVaultAuthApiStub) {

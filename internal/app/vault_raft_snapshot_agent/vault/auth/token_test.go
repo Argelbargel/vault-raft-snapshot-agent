@@ -26,7 +26,7 @@ func TestTokenAuthFailsIfLoginFails(t *testing.T) {
 
 	_, err := auth.Refresh(&authApiStub)
 
-	assert.Error(t, err, "token-auth did not report error although login failed!")
+	assert.Errorf(t, err, "token-auth did not report error although login failed!")
 }
 
 func TestTokenAuthReturnsExpirationBasedOnLoginLeaseDuration(t *testing.T) {
@@ -36,7 +36,7 @@ func TestTokenAuthReturnsExpirationBasedOnLoginLeaseDuration(t *testing.T) {
 
 	expiration, err := auth.Refresh(&authApiStub)
 
-	assert.NoError(t, err, "token-auth failed unexpectedly")
+	assert.NoErrorf(t, err, "token-auth failed unexpectedly")
 
 	expectedExpiration := time.Now().Add((time.Second * authApiStub.leaseDuration) / 2)
 	assert.WithinDuration(t, expectedExpiration, expiration, time.Millisecond)

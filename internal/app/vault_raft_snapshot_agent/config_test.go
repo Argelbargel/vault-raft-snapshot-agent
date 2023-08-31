@@ -32,42 +32,42 @@ func TestReadEmptyConfig(t *testing.T) {
 	file := "../../../testdata/empty.yaml"
 	_, err := ReadConfig(file)
 
-	assert.Error(t, err, `ReadConfig(%s) should return error for empty file`, file)
+	assert.Errorf(t, err, `ReadConfig(%s) should return error for empty file`, file)
 }
 
 func TestReadConfigWithInvalidAddr(t *testing.T) {
 	file := "../../../testdata/invalid-addr.yaml"
 	_, err := ReadConfig(file)
 
-	assert.Error(t, err, `ReadConfig(%s) should return error for config with invalid addr`, file)
+	assert.Errorf(t, err, `ReadConfig(%s) should return error for config with invalid addr`, file)
 }
 
 func TestReadConfigWithoutUploaders(t *testing.T) {
 	file := "../../../testdata/no-uploaders.yaml"
 	_, err := ReadConfig(file)
 
-	assert.Error(t, err, `ReadConfig(%s) should return error for config without uploaders`, file)
+	assert.Errorf(t, err, `ReadConfig(%s) should return error for config without uploaders`, file)
 }
 
 func TestReadConfigWithInvalidUploader(t *testing.T) {
 	file := "../../../testdata/invalid-uploader.yaml"
 	_, err := ReadConfig(file)
 
-	assert.Error(t, err, `ReadConfig(%s) should return error for config with invalid uploader`, file)
+	assert.Errorf(t, err, `ReadConfig(%s) should return error for config with invalid uploader`, file)
 }
 
 func TestReadConfigWithInvalidLocalUploadPath(t *testing.T) {
 	file := "../../../testdata/invalid-local-upload-path.yaml"
 	_, err := ReadConfig(file)
 
-	assert.Error(t, err, `ReadConfig(%s) should return error for config with invalid local upload-path`, file)
+	assert.Errorf(t, err, `ReadConfig(%s) should return error for config with invalid local upload-path`, file)
 }
 
 func TestReadConfigWithInvalidAuth(t *testing.T) {
 	file := "../../../testdata/invalid-auth.yaml"
 	_, err := ReadConfig(file)
 
-	assert.Error(t, err, `ReadConfig(%s) should return error for config with invalid auth`, file)
+	assert.Errorf(t, err, `ReadConfig(%s) should return error for config with invalid auth`, file)
 }
 
 func TestReadCompleteConfig(t *testing.T) {
@@ -122,8 +122,8 @@ func TestReadCompleteConfig(t *testing.T) {
 	file := "../../../testdata/complete.yaml"
 	config, err := ReadConfig(file)
 
-	assert.NoError(t, err, "ReadConfig(%s) failed unexpectedly", file)
-	assert.Equalf(t, expectedConfig, config, "ReadConfig returned unexpected config")
+	assert.NoErrorf(t, err, "ReadConfig(%s) failed unexpectedly", file)
+	assert.Equal(t, expectedConfig, config)
 }
 
 func TestReadConfigSetsDefaultValues(t *testing.T) {
@@ -164,8 +164,8 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 	file := "../../../testdata/defaults.yaml"
 	config, err := ReadConfig(file)
 
-	assert.NoError(t, err, "ReadConfig(%s) failed unexpectedly", file)
-	assert.Equalf(t, expectedConfig, config, "ReadConfig returned unexpected config")
+	assert.NoErrorf(t, err, "ReadConfig(%s) failed unexpectedly", file)
+	assert.Equal(t, expectedConfig, config)
 }
 
 func TestReadConfigBindsEnvVariables(t *testing.T) {
