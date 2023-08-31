@@ -14,14 +14,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// allow ovveriding "default" kubernetes-jwt-path so that tests on ci do not fail
-func defaultJwtPath() string {
-	defaultJwtPath := os.Getenv("VRSA_VAULT_AUTH_KUBERNETES_JWTPATH")
-	if defaultJwtPath == "" {
-		defaultJwtPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+// allow overiding "default" kubernetes-jwt-path so that tests on ci do not fail
+func defaultJwtPath(def string) string {
+	jwtPath := os.Getenv("VRSA_VAULT_AUTH_KUBERNETES_JWTPATH")
+	if jwtPath != "" {
+		return jwtPath
 	}
 
-	return defaultJwtPath
+	if def != "" {
+		return def
+	}
+
+	return "/var/run/secrets/kubernetes.io/serviceaccount/token"		
 }
 
 func TestReadEmptyConfig(t *testing.T) {
@@ -79,7 +83,7 @@ func TestReadCompleteConfig(t *testing.T) {
 				Kubernetes: auth.KubernetesAuthConfig{
 					Role:    "test-role",
 					Path:    "test-auth",
-					JWTPath: "./jwt",
+					JWTPath: defaultJwtPath("./jwt"),
 				},
 			},
 		},
@@ -135,7 +139,7 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 				Kubernetes: auth.KubernetesAuthConfig{
 					Role:    "test-role",
 					Path:    "kubernetes",
-					JWTPath: defaultJwtPath(),
+					JWTPath: defaultJwtPath(""),
 				},
 			},
 		},
@@ -182,18 +186,19 @@ func TestReadConfigBindsEnvVariables(t *testing.T) {
 }
 
 func init() {
-	if err := os.MkdirAll(filepath.Dir(defaultJwtPath()), 0777); err != nil && !errors.Is(err, os.ErrExist) {
-		log.Fatalf("could not create directorys for jwt-file %s: %v", defaultJwtPath(), err)
+	jwtPath := defaultJwtPath("")
+	if err := os.MkdirAll(filepath.Dir(jwtPath), 0777); err != nil && !errors.Is(err, os.ErrExist) {
+		log.Fatalf("could not create directorys for jwt-file %s: %v", jwtPath, err)
 	}
 
-	file, err := os.OpenFile(defaultJwtPath(), os.O_RDWR|os.O_CREATE, 0666)
+	file, err := os.OpenFile(defaultJwtPath(""), os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		log.Fatalf("could not create jwt-file %s: %v", defaultJwtPath(), err)
+		log.Fatalf("could not create jwt-file %s: %v", jwtPath, err)
 	}
 
 	file.Close()
 
 	if err != nil {
-		log.Fatalf("could not read jwt-file %s: %v", defaultJwtPath(), err)
+		log.Fatalf("could not read jwt-file %s: %v", jwtPath, err)
 	}
 }
