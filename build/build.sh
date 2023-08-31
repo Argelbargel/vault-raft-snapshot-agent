@@ -45,7 +45,7 @@ while [ : ]; do
 done
 
 if [ -z "$WORK_DIR" ]; then
-    WORK_DIR="$BUILD_DIR/.build"
+    WORK_DIR=$(realpath "$BUILD_DIR/.build")
 fi
 
 echo "build-dir: $BUILD_DIR"
