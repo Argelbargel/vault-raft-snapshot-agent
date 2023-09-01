@@ -21,18 +21,19 @@ type SnapshotterConfig struct {
 }
 
 type SnapshotConfig struct {
-	Frequency time.Duration `default:"1h" mapstructure:",omitempty"`
-	Retain    int
-	Timeout   time.Duration `default:"60s" mapstructure:",omitempty"`
+	Frequency       time.Duration `default:"1h"`
+	Retain          int
+	Timeout         time.Duration `default:"60s"`
+	NamePrefix      string        `default:"raft-snapshot-"`
+	NameSuffix      string        `default:".snap"`
+	TimestampFormat string        `default:"2006-01-02T15-04-05Z-0700"`
 }
 
 type Snapshotter struct {
-	lock            sync.Mutex
-	client          *vault.VaultClient
-	uploaders       []upload.Uploader
-	frequency       time.Duration
-	snapshotTimeout time.Duration
-	retainSnapshots int
+	lock      sync.Mutex
+	client    *vault.VaultClient
+	uploaders []upload.Uploader
+	config    SnapshotConfig
 }
 
 func CreateSnapshotter(config SnapshotterConfig) (*Snapshotter, error) {
@@ -61,11 +62,9 @@ func (s *Snapshotter) Configure(config SnapshotConfig, client *vault.VaultClient
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	s.frequency = config.Frequency
 	s.client = client
 	s.uploaders = uploaders
-	s.snapshotTimeout = config.Timeout
-	s.retainSnapshots = config.Retain
+	s.config = config
 }
 
 func (s *Snapshotter) TakeSnapshot(ctx context.Context) (time.Duration, error) {
@@ -74,34 +73,35 @@ func (s *Snapshotter) TakeSnapshot(ctx context.Context) (time.Duration, error) {
 
 	snapshot, err := os.CreateTemp("", "snapshot")
 	if err != nil {
-		return s.frequency, err
+		return s.config.Frequency, err
 	}
 
 	defer os.Remove(snapshot.Name())
 
-	ctx, cancel := context.WithTimeout(ctx, s.snapshotTimeout)
+	ctx, cancel := context.WithTimeout(ctx, s.config.Timeout)
 	defer cancel()
 
 	err = s.client.TakeSnapshot(ctx, snapshot)
 	if err != nil {
-		return s.frequency, err
+		return s.config.Frequency, err
 	}
 
 	_, err = snapshot.Seek(0, io.SeekStart)
 	if err != nil {
-		return s.frequency, err
+		return s.config.Frequency, err
 	}
 
-	return s.frequency, s.uploadSnapshot(ctx, snapshot, time.Now())
+	return s.config.Frequency, s.uploadSnapshot(ctx, snapshot, time.Now().Format(s.config.TimestampFormat))
 }
 
-func (s *Snapshotter) uploadSnapshot(ctx context.Context, snapshot io.Reader, time time.Time) error {
+func (s *Snapshotter) uploadSnapshot(ctx context.Context, snapshot io.Reader, timestamp string) error {
 	var errs error
 	for _, uploader := range s.uploaders {
-		if err := uploader.Upload(ctx, snapshot, time, s.retainSnapshots); err != nil {
+		err := uploader.Upload(ctx, snapshot, s.config.NamePrefix, timestamp, s.config.NameSuffix, s.config.Retain)
+		if err != nil {
 			errs = multierr.Append(errs, fmt.Errorf("unable to upload snapshot: %s", err))
 		} else {
-			log.Printf("Successfully uploaded snapshot to %s\n", uploader.Destination())		
+			log.Printf("Successfully uploaded snapshot to %s\n", uploader.Destination())
 		}
 	}
 

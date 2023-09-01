@@ -146,7 +146,10 @@ func TestSnapshotterUploadsDataFromSnapshot(t *testing.T) {
 	}
 	uploaderStub := uploaderStub{}
 	config := SnapshotConfig{
-		Timeout: time.Second,
+		Timeout:         time.Second,
+		NamePrefix:      "test-",
+		NameSuffix:      ".test",
+		TimestampFormat: "2006-01-02T15-04Z-0700",
 	}
 
 	snapshotter := Snapshotter{}
@@ -157,6 +160,9 @@ func TestSnapshotterUploadsDataFromSnapshot(t *testing.T) {
 	assert.NoError(t, err, "TakeSnaphot failed unexpectedly")
 	assert.True(t, uploaderStub.uploaded, "TakeSnapshot did not upload")
 	assert.Equal(t, clientAPIStub.snapshotData, uploaderStub.uploadData, "TakeSnapshot did upload false data")
+	assert.Equal(t, config.NamePrefix, uploaderStub.uploadPrefix)
+	assert.Equal(t, config.NameSuffix, uploaderStub.uploadSuffix)
+	assert.Equal(t, time.Now().Format(config.TimestampFormat), uploaderStub.uploadTimestamp)
 }
 
 func TestSnapshotterContinuesUploadingIfUploadFails(t *testing.T) {
@@ -231,16 +237,19 @@ func (stub *snapshotterVaultClientAPIStub) AuthAPI() auth.VaultAuthAPI {
 }
 
 type uploaderStub struct {
-	uploaded    bool
-	uploadData  string
-	uploadFails bool
+	uploaded        bool
+	uploadPrefix    string
+	uploadTimestamp string
+	uploadSuffix    string
+	uploadData      string
+	uploadFails     bool
 }
 
 func (stub *uploaderStub) Destination() string {
 	return ""
 }
 
-func (stub *uploaderStub) Upload(ctx context.Context, reader io.Reader, time time.Time, retain int) error {
+func (stub *uploaderStub) Upload(ctx context.Context, reader io.Reader, prefix string, timestamp string, suffix string, retain int) error {
 	stub.uploaded = true
 	if stub.uploadFails {
 		return errors.New("upload failed")
@@ -250,5 +259,8 @@ func (stub *uploaderStub) Upload(ctx context.Context, reader io.Reader, time tim
 		return err
 	}
 	stub.uploadData = string(data)
+	stub.uploadPrefix = prefix
+	stub.uploadTimestamp = timestamp
+	stub.uploadSuffix = suffix
 	return nil
 }

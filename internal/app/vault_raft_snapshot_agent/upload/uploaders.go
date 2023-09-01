@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
-	"time"
+	"strings"
 )
 
 type UploadersConfig struct {
@@ -21,7 +21,7 @@ func (c UploadersConfig) HasUploaders() bool {
 
 type Uploader interface {
 	Destination() string
-	Upload(ctx context.Context, reader io.Reader, time time.Time, retain int) error
+	Upload(ctx context.Context, snapshot io.Reader, prefix string, timestamp string, suffix string, retain int) error
 }
 
 func CreateUploaders(config UploadersConfig) ([]Uploader, error) {
@@ -62,11 +62,6 @@ func CreateUploaders(config UploadersConfig) ([]Uploader, error) {
 	return uploaders, nil
 }
 
-const (
-	snapshotFileName string = "raft_snapshot-"
-	snapshotFileExt  string = ".snap"
-)
-
 type uploaderImpl[T any] interface {
 	uploadSnapshot(ctx context.Context, name string, data io.Reader) error
 	deleteSnapshot(ctx context.Context, snapshot T) error
@@ -82,21 +77,21 @@ func (u uploader[T]) Destination() string {
 	return ""
 }
 
-func (u uploader[T]) Upload(ctx context.Context, reader io.Reader, time time.Time, retain int) error {
-	name := fmt.Sprintf("%s-%d%s", snapshotFileName, time.UnixNano(), snapshotFileExt)
-	if err := u.impl.uploadSnapshot(ctx, name, reader); err != nil {
+func (u uploader[T]) Upload(ctx context.Context, snapshot io.Reader, prefix string, timestamp string, suffix string, retain int) error {
+	name := strings.Join([]string{prefix, timestamp, suffix}, "")
+	if err := u.impl.uploadSnapshot(ctx, name, snapshot); err != nil {
 		return fmt.Errorf("error uploading snapshot to %s: %w", u.Destination(), err)
 	}
 
 	if retain > 0 {
-		return u.deleteSnapshots(ctx, retain)
+		return u.deleteSnapshots(ctx, prefix, suffix, retain)
 	}
 
 	return nil
 }
 
-func (u uploader[T]) deleteSnapshots(ctx context.Context, retain int) error {
-	snapshots, err := u.impl.listSnapshots(ctx, snapshotFileName, snapshotFileExt)
+func (u uploader[T]) deleteSnapshots(ctx context.Context, prefix string, suffix string, retain int) error {
+	snapshots, err := u.impl.listSnapshots(ctx, prefix, suffix)
 	if err != nil {
 		return fmt.Errorf("error getting snapshots from %s: %w", u.Destination(), err)
 	}

@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/thoas/go-funk"
@@ -17,22 +15,21 @@ func TestUploaderUpload(t *testing.T) {
 	implStub := uploaderImplStub{}
 	uploader := uploader[int]{&implStub}
 	snapshotData := []byte("test")
-	snapshotTime := time.Now().Add(time.Hour * -1)
 
 	ctx := context.Background()
-	err := uploader.Upload(ctx, bytes.NewReader(snapshotData), snapshotTime, 0)
+	err := uploader.Upload(ctx, bytes.NewReader(snapshotData), "test-", "time", ".snap", 0)
 
 	assert.NoError(t, err, "Upload failed unexpectedly")
 	assert.Equal(t, ctx, implStub.uploadCtx)
 	assert.Equal(t, snapshotData, implStub.uploadData)
-	assert.Equal(t, fmt.Sprintf("%s-%d%s", snapshotFileName, snapshotTime.UnixNano(), snapshotFileExt), implStub.uploadName)
+	assert.Equal(t, "test-time.snap", implStub.uploadName)
 }
 
 func TestUploaderDeletesSnapshotsIfRetainIsSet(t *testing.T) {
 	implStub := uploaderImplStub{snapshots: []int{3, 1, 4, 2}}
 	uploader := uploader[int]{&implStub}
 
-	err := uploader.Upload(context.Background(), &bytes.Buffer{}, time.Now(), 2)
+	err := uploader.Upload(context.Background(), &bytes.Buffer{}, "", "", "", 2)
 
 	assert.NoError(t, err, "Upload failed unexpectedly")
 	assert.Equal(t, []int{4, 3}, implStub.snapshots)
@@ -42,7 +39,7 @@ func TestUploaderUploadFailsIfImplUploadFails(t *testing.T) {
 	implStub := uploaderImplStub{snapshots: []int{3, 1}, uploadFails: true}
 	uploader := uploader[int]{&implStub}
 
-	err := uploader.Upload(context.Background(), &bytes.Buffer{}, time.Now(), 1)
+	err := uploader.Upload(context.Background(), &bytes.Buffer{}, "", "", "", 1)
 
 	assert.Error(t, err, "Upload did not fail although implementation failed")
 	assert.True(t, implStub.uploaded)
@@ -54,7 +51,7 @@ func TestUploaderUploadFailsIfImplListFails(t *testing.T) {
 	implStub := uploaderImplStub{snapshots: []int{3, 1}, listFails: true}
 	uploader := uploader[int]{&implStub}
 
-	err := uploader.Upload(context.Background(), &bytes.Buffer{}, time.Now(), 1)
+	err := uploader.Upload(context.Background(), &bytes.Buffer{}, "", "", "", 1)
 
 	assert.Error(t, err, "Upload did not fail although implementation failed")
 	assert.True(t, implStub.uploaded)
@@ -66,7 +63,7 @@ func TestUploaderUploadFailsIfImplDeleteFails(t *testing.T) {
 	implStub := uploaderImplStub{snapshots: []int{3, 1}, deleteFails: true}
 	uploader := uploader[int]{&implStub}
 
-	err := uploader.Upload(context.Background(), &bytes.Buffer{}, time.Now(), 1)
+	err := uploader.Upload(context.Background(), &bytes.Buffer{}, "", "", "", 1)
 
 	assert.Error(t, err, "Upload did not fail although implementation failed")
 	assert.True(t, implStub.uploaded)

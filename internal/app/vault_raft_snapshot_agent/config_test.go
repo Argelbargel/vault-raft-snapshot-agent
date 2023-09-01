@@ -91,6 +91,9 @@ func TestReadCompleteConfig(t *testing.T) {
 			Frequency: time.Hour * 2,
 			Retain:    10,
 			Timeout:   time.Minute * 2,
+			NamePrefix: "test-",
+			NameSuffix: ".test",
+			TimestampFormat: "2006-01-02",
 		},
 		Uploaders: upload.UploadersConfig{
 			AWS: upload.AWSConfig{
@@ -147,6 +150,9 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 			Frequency: time.Hour,
 			Retain:    0,
 			Timeout:   time.Minute,
+			NamePrefix: "raft-snapshot-",
+			NameSuffix: ".snap",
+			TimestampFormat: "2006-01-02T15-04-05Z-0700",
 		},
 		Uploaders: upload.UploadersConfig{
 			AWS: upload.AWSConfig{
