@@ -23,6 +23,7 @@ type Snapshotter struct {
 	retainSnapshots int
 }
 
+
 func CreateSnapshotter(config SnapshotterConfig) (*Snapshotter, error) {
 	snapshotter := &Snapshotter{}
 
@@ -80,15 +81,13 @@ func (s *Snapshotter) TakeSnapshot(ctx context.Context) (time.Duration, error) {
 		return s.frequency, err
 	}
 
-	return s.frequency, s.uploadSnapshot(ctx, snapshot)
+	return s.frequency, s.uploadSnapshot(ctx, snapshot, time.Now())
 }
 
-func (s *Snapshotter) uploadSnapshot(ctx context.Context, snapshot io.Reader) error {
-	now := time.Now().UnixNano()
-
+func (s *Snapshotter) uploadSnapshot(ctx context.Context, snapshot io.Reader, time time.Time) error {
 	var errs error
 	for _, uploader := range s.uploaders {
-		if err := uploader.Upload(ctx, snapshot, now, s.retainSnapshots); err != nil {
+		if err := uploader.Upload(ctx, snapshot, time, s.retainSnapshots); err != nil {
 			errs = multierr.Append(errs, fmt.Errorf("unable to upload snapshot: %s", err))
 		} else {
 			log.Printf("Successfully uploaded snapshot to %s\n", uploader.Destination())		

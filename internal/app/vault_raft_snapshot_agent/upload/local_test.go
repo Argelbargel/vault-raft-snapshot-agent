@@ -3,97 +3,109 @@ package upload
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/thoas/go-funk"
 )
 
-func TestLocalUploaderDestination(t *testing.T) {
-	config := LocalConfig{Path: "/test"}
-	uploader, err := newLocalUploader(config)
+func TestLocalDestination(t *testing.T) {
+	impl := localUploaderImpl{"/test"}
 
-	assert.NoError(t, err, "newLocalUploader failed unexpectedly")
-	assert.Equal(t, "local path /test", uploader.Destination())
+	assert.Equal(t, "local path /test", impl.Destination())
 }
 
-func TestLocalUploaderFailsIfFileCannotBeCreated(t *testing.T) {
-	config := LocalConfig{Path: "./does/not/exist"}
-	uploader, _ := newLocalUploader(config)
+func TestLocalUploadSnapshotFailsIfFileCannotBeCreated(t *testing.T) {
+	impl := localUploaderImpl{"./does/not/exist"}
 
-	err := uploader.Upload(context.Background(), &bytes.Buffer{}, time.Now().Unix(), 0)
+	err := impl.uploadSnapshot(context.Background(), "test", &bytes.Buffer{})
 
-	assert.Error(t, err, "Upload() should fail if file could not be created!")
+	assert.Error(t, err, "uploadSnapshot() should fail if file could not be created!")
 }
 
-func TestLocalUploaderCreatesLocalFile(t *testing.T) {
-	config := LocalConfig{Path: createSnapshotPath(t)}
-	uploader, _ := newLocalUploader(config)
+func TestLocalUploadeSnapshotCreatesFile(t *testing.T) {
+	impl := localUploaderImpl{t.TempDir()}
 	snapshotData := []byte("test")
-	currentTs := time.Now().Unix()
 
-	defer func() {
-		_ = os.RemoveAll(filepath.Dir(config.Path))
-	}()
+	err := impl.uploadSnapshot(context.Background(), "test"+snapshotFileExt, bytes.NewReader(snapshotData))
 
-	err := uploader.Upload(context.Background(), bytes.NewReader(snapshotData), currentTs, 0)
+	assert.NoError(t, err, "uploadSnapshot() failed unexpectedly!")
 
-	assert.NoError(t, err, "Upload() failed unexpectedly!")
+	backupData, err := os.ReadFile(fmt.Sprintf("%s/test%s", impl.path, snapshotFileExt))
 
-	backupData, err := os.ReadFile(fmt.Sprintf("%s/%s-%d%s", config.Path, snapshotFileName, currentTs, snapshotFileExt))
-
-	assert.NoError(t, err, "Upload() failed unexpectedly!")
+	assert.NoError(t, err, "uploadSnapshot() failed unexpectedly!")
 	assert.Equal(t, snapshotData, backupData)
 }
 
-func TestLocalUploaderDeletesOlderSnapshots(t *testing.T) {
-	config := LocalConfig{Path: createSnapshotPath(t)}
-	uploader, _ := newLocalUploader(config)
+func TestLocalDeleteSnapshot(t *testing.T) {
+	impl := localUploaderImpl{t.TempDir()}
 	snapshotData := []byte("test")
 
 	defer func() {
-		_ = os.RemoveAll(filepath.Dir(config.Path))
+		_ = os.RemoveAll(filepath.Dir(impl.path))
 	}()
 
-	ts := time.Now()
+	err := impl.uploadSnapshot(context.Background(), "test"+snapshotFileExt, bytes.NewReader(snapshotData))
+	assert.NoError(t, err, "uploadSnapshot() failed unexpectedly!")
+
+	info, err := os.Stat(fmt.Sprintf("%s/test%s", impl.path, snapshotFileExt))
+	assert.NoError(t, err, "could not get info for snapshot: %v", err)
+
+	err = impl.deleteSnapshot(context.Background(), info)
+	assert.NoError(t, err, "deleteSnapshot() failed unexpectedly!")
+
+	_, err = os.Stat(fmt.Sprintf("%s/test%s", impl.path, snapshotFileExt))
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func TestLocalListSnapshots(t *testing.T) {
+	impl := localUploaderImpl{t.TempDir()}
+
+	var expectedSnaphotNames[]string
 	for i := 0; i < 3; i++ {
-		ts = ts.Add(time.Second)
-		err := uploader.Upload(context.Background(), bytes.NewReader(snapshotData), ts.Unix(), 0)
-		assert.NoError(t, err, "Upload() failed unexpectedly!")
+		expectedSnaphotNames = append(expectedSnaphotNames, createEmptySnapshot(t, impl.path).Name())
 	}
 
-	assertNumberOfFiles(t, 3, config.Path)
+	listedSnapshots, err := impl.listSnapshots(context.Background(), snapshotFileName, snapshotFileExt)
+	listedSnapshotNames := funk.Map(listedSnapshots, func(s os.FileInfo) string { return s.Name() })
 
-	ts = ts.Add(time.Second)
-	err := uploader.Upload(context.Background(), bytes.NewReader(snapshotData), ts.Unix(), 2)
-	assert.NoError(t, err, "Upload() failed unexpectedly!")
-
-	assertNumberOfFiles(t, 2, config.Path)
+	assert.NoError(t, err)
+	assert.Equal(t, len(expectedSnaphotNames), len(listedSnapshots))
+	assert.ElementsMatch(t, expectedSnaphotNames, listedSnapshotNames)
 }
 
-func assertNumberOfFiles(t *testing.T, expected int, path string) {
-	t.Helper()
+func TestLocalCompareSnaphots(t *testing.T) {
+	impl := localUploaderImpl{t.TempDir()}
 
-	files, err := os.ReadDir(path)
-	assert.NoErrorf(t, err, "could not list files in %s: %v", path, err)
+	oldSnapshot := createEmptySnapshot(t, impl.path)
+	time.Sleep(time.Second)
+	newSnapshot := createEmptySnapshot(t, impl.path)
 
-	if len(files) != expected {
-		t.Errorf("%s does not contain exactly %d files, got: %d", path, expected, len(files))
-	}
+	snapshots := []os.FileInfo{newSnapshot, oldSnapshot}
+
+	slices.SortFunc(snapshots, impl.compareSnapshots)
+
+	assert.Equal(t, []os.FileInfo{oldSnapshot, newSnapshot}, snapshots)
 }
 
-func createSnapshotPath(t *testing.T) string {
+func createEmptySnapshot(t *testing.T, dir string) os.FileInfo {
 	t.Helper()
 
-	path := fmt.Sprintf("%s/snapshots-%d-%d/", os.TempDir(), time.Now().Unix(), rand.Int())
-	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil && !errors.Is(err, os.ErrExist) {
-		t.Fatalf("could not create path %s: %v", path, err)
-	}
+	file, err := os.Create(fmt.Sprintf("%s/%s-%d%s", dir, snapshotFileName, rand.Int(), snapshotFileExt))
+	assert.NoError(t, err, "could not create temp-file")
 
-	return path
+	info, err := os.Stat(file.Name())
+	assert.NoError(t, err, "could not stat temp-file")
+
+	err = file.Close()
+	assert.NoError(t, err, "could not close temp-file")
+
+	return info
 }
