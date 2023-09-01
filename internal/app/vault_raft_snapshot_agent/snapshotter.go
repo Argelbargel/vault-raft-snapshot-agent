@@ -14,6 +14,18 @@ import (
 	"go.uber.org/multierr"
 )
 
+type SnapshotterConfig struct {
+	Vault     vault.VaultClientConfig
+	Snapshots SnapshotConfig
+	Uploaders upload.UploadersConfig
+}
+
+type SnapshotConfig struct {
+	Frequency time.Duration `default:"1h" mapstructure:",omitempty"`
+	Retain    int
+	Timeout   time.Duration `default:"60s" mapstructure:",omitempty"`
+}
+
 type Snapshotter struct {
 	lock            sync.Mutex
 	client          *vault.VaultClient
@@ -22,7 +34,6 @@ type Snapshotter struct {
 	snapshotTimeout time.Duration
 	retainSnapshots int
 }
-
 
 func CreateSnapshotter(config SnapshotterConfig) (*Snapshotter, error) {
 	snapshotter := &Snapshotter{}
