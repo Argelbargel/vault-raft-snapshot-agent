@@ -9,6 +9,9 @@ import (
 	"strings"
 )
 
+var snapshotFileName string = "raft_snapshot-"
+var snapshotFileExt string = ".snap"
+
 type LocalConfig struct {
 	Path  string `validate:"required_if=Empty false,omitempty,dir"`
 	Empty bool
@@ -29,41 +32,48 @@ func (u *localUploader) Destination() string {
 }
 
 func (u *localUploader) Upload(ctx context.Context, reader io.Reader, currentTs int64, retain int) error {
-	fileName := fmt.Sprintf("%s/raft_snapshot-%d.snap", u.path, currentTs)
+	fileName := fmt.Sprintf("%s/%s-%d%s", u.path, snapshotFileName, currentTs, snapshotFileExt)
+
 	file, err := os.Create(fileName)
 	if err != nil {
-		return fmt.Errorf("error creating local file: %w", err)
+		return fmt.Errorf("error creating local file %s: %w", fileName, err)
 	}
-	_, err = io.Copy(file, reader)
 
-	if err != nil {
-		return fmt.Errorf("error writing snapshot to local storage: %w", err)
-	} else {
-		if retain > 0 {
-			existingSnapshots, err := u.listUploadedSnapshotsAscending("raft_snapshot-")
+	defer func() {
+		_ = file.Close()
+	}()
 
-			if err != nil {
-				return fmt.Errorf("error getting existing snapshots from local storage: %w", err)
-			}
-
-			if len(existingSnapshots) <= int(retain) {
-				return nil
-			}
-
-			filesToDelete := existingSnapshots[0 : len(existingSnapshots)-int(retain)]
-
-			for _, f := range filesToDelete {
-				err := os.Remove(fmt.Sprintf("%s/%s", u.path, f.Name()))
-				if err != nil {
-					return fmt.Errorf("error deleting local snapshot %s: %w", f.Name(), err)
-				}
-			}
-		}
-		return nil
+	if _, err = io.Copy(file, reader); err != nil {
+		return fmt.Errorf("error writing snapshot to local file %s: %w", fileName, err)
 	}
+
+	if retain > 0 {
+		return u.delete(retain)
+	}
+
+	return nil
 }
 
-func (u *localUploader) listUploadedSnapshotsAscending(keyPrefix string) ([]os.FileInfo, error) {
+func (u *localUploader) delete(retain int) error {
+	existingSnapshots, err := u.listUploadedSnapshotsDescending(snapshotFileName)
+	if err != nil {
+		return fmt.Errorf("error getting existing snapshots from local storage: %w", err)
+	}
+
+	if len(existingSnapshots) > int(retain) {
+		filesToDelete := existingSnapshots[retain:]
+
+		for _, f := range filesToDelete {
+			if err := os.Remove(fmt.Sprintf("%s/%s", u.path, f.Name())); err != nil {
+				return fmt.Errorf("error deleting local snapshot %s: %w", f.Name(), err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (u *localUploader) listUploadedSnapshotsDescending(keyPrefix string) ([]os.FileInfo, error) {
 	var result []os.FileInfo
 
 	files, err := os.ReadDir(u.path)
@@ -85,7 +95,7 @@ func (u *localUploader) listUploadedSnapshotsAscending(keyPrefix string) ([]os.F
 	timestamp := func(f1, f2 *os.FileInfo) bool {
 		file1 := *f1
 		file2 := *f2
-		return file1.ModTime().Before(file2.ModTime())
+		return file1.ModTime().After(file2.ModTime())
 	}
 
 	localBy(timestamp).Sort(result)

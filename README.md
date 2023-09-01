@@ -206,7 +206,7 @@ snapshots:
 ```
 
 - `frequency` (default: 1h) - how often to run the snapshot agent.  Examples: `30s`, `1h`.  See https://golang.org/pkg/time/#ParseDuration for a full list of valid time units
-- `retain` (default: 0)  -the number of backups to retain. `0` means all snapshots will be retained
+- `retain` (default: 0)  -the number of snaphots to retain. For example, if you set `retain: 2`, the two most recent snapshots will be kept in storage. `0` means all snapshots will be retained
 - `timeout` (default: 60s) - timeout for creating snapshots. Examples: `30s`, `1h`. Default: `60s`. See https://golang.org/pkg/time/#ParseDuration for a full list of valid time units
 
 
