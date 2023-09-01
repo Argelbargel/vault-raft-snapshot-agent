@@ -41,7 +41,7 @@ func TestSnapshotterLocksTakeSnapshot(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		err := <-errs
-		assert.NoErrorf(t, err, "TakeSnapshot failed unexpectedly")
+		assert.NoError(t, err, "TakeSnapshot failed unexpectedly")
 	}
 
 	assert.GreaterOrEqual(t, time.Since(start), clientAPIStub.snapshotRuntime*2, "TakeSnapshot did not prevent synchronous snapshots")
@@ -83,14 +83,14 @@ func TestSnapshotterLocksConfigure(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		err := <-errs
-		assert.NoErrorf(t, err, "TakeSnapshot failed unexpectedly")
+		assert.NoError(t, err, "TakeSnapshot failed unexpectedly")
 	}
 
 	assert.GreaterOrEqual(t, time.Since(start), clientAPIStub.snapshotRuntime+250, "TakeSnapshot did not prevent re-configuration during snapshots")
 
 	frequency, err := snapshotter.TakeSnapshot(context.Background())
 
-	assert.NoErrorf(t, err, "TakeSnapshot failed unexpectedly")
+	assert.NoError(t, err, "TakeSnapshot failed unexpectedly")
 	assert.Equal(t, newConfig.Frequency, frequency, "Snaphotter did not re-configure propertly")
 }
 
@@ -116,7 +116,6 @@ func TestSnapshotterAbortsAfterTimeout(t *testing.T) {
 	}()
 
 	assert.NoErrorf(t, <-errs, "TakeSnapshot failed unexpectedly")
-
 	// config.Timeout * 2 is quite less than clientAPIStub.snapshotRuntime
 	// and big enough so that the test does not flicker
 	assert.LessOrEqual(t, time.Since(start), config.Timeout*2, "TakeSnapshot did not abort at timeout")
@@ -136,7 +135,7 @@ func TestSnapshotterFailsIfSnapshottingFails(t *testing.T) {
 
 	_, err := snapshotter.TakeSnapshot(context.Background())
 
-	assert.Errorf(t, err, "TakeSnaphot did not fail although snapshotting failed")
+	assert.Error(t, err, "TakeSnaphot did not fail although snapshotting failed")
 	assert.False(t, uploaderStub.uploaded, "TakeSnapshot uploaded although snapshotting failed")
 }
 
@@ -155,7 +154,7 @@ func TestSnapshotterUploadsDataFromSnapshot(t *testing.T) {
 
 	_, err := snapshotter.TakeSnapshot(context.Background())
 
-	assert.NoErrorf(t, err, "TakeSnaphot failed unexpectedly")
+	assert.NoError(t, err, "TakeSnaphot failed unexpectedly")
 	assert.True(t, uploaderStub.uploaded, "TakeSnapshot did not upload")
 	assert.Equal(t, clientAPIStub.snapshotData, uploaderStub.uploadData, "TakeSnapshot did upload false data")
 }
@@ -180,7 +179,7 @@ func TestSnapshotterContinuesUploadingIfUploadFails(t *testing.T) {
 	snapshotter.Configure(config, vault.NewClient("http://127.0.0.1:8200", &clientAPIStub, nil), []upload.Uploader{&uploaderStub1, &uploaderStub2})
 
 	_, err := snapshotter.TakeSnapshot(context.Background())
-	assert.Errorf(t, err, "TakeSnaphot did not fail although one of the uploaders failed")
+	assert.Error(t, err, "TakeSnaphot did not fail although one of the uploaders failed")
 
 	assert.True(t, uploaderStub1.uploaded, "TakeSnapshot did not upload to first uploader")
 	assert.True(t, uploaderStub2.uploaded, "TakeSnapshot did not upload to second uploader")
@@ -241,7 +240,7 @@ func (stub *uploaderStub) Destination() string {
 	return ""
 }
 
-func (stub *uploaderStub) Upload(ctx context.Context, reader io.Reader, currentTs int64, retain int) error {
+func (stub *uploaderStub) Upload(ctx context.Context, reader io.Reader, time time.Time, retain int) error {
 	stub.uploaded = true
 	if stub.uploadFails {
 		return errors.New("upload failed")
