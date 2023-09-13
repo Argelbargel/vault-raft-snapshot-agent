@@ -234,7 +234,12 @@ func copyFile(t *testing.T, source string, dest string) error {
 		return err
 	}
 
-	return os.WriteFile(dest, in, 0644)
+	tmpFile := fmt.Sprintf("%s.tmp", dest)
+	if err := os.WriteFile(tmpFile, in, 0644); err != nil {
+		return err
+	}
+
+	return os.Rename(tmpFile, dest)
 }
 
 func init() {
