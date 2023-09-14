@@ -1,10 +1,9 @@
-package vault_raft_snapshot_agent
+package config
 
 import (
 	"fmt"
-	"log"
-	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/creasty/defaults"
@@ -14,6 +13,8 @@ import (
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
 )
+
+type Path string
 
 // a rattlesnake is a viper adapted to our needs ;-)
 type rattlesnake struct {
@@ -66,28 +67,18 @@ func (r rattlesnake) ConfigFileUsed() string {
 	return r.v.ConfigFileUsed()
 }
 
-func (r rattlesnake) Unmarshal(config interface{}, opts ...viper.DecoderConfigOption) error {
+func (r rattlesnake) Unmarshal(config interface{}) error {
 	if err := bindStruct(r.v, config); err != nil {
 		return fmt.Errorf("could not bind env vars for configuration: %s", err)
 	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("could not determine current working directory: %s", err)
-	}
+	decodeHook := mapstructure.ComposeDecodeHookFunc(
+		mapstructure.StringToTimeDurationHookFunc(),
+		mapstructure.StringToSliceHookFunc(","),
+		newPathResolverHook(filepath.Dir(r.ConfigFileUsed())),
+	)
 
-	configDir := filepath.Dir(r.ConfigFileUsed())
-	if err := os.Chdir(configDir); err != nil {
-		return fmt.Errorf("could not switch working-directory to %s to parse configuration: %s", configDir, err)
-	}
-
-	defer func() {
-		if err := os.Chdir(wd); err != nil {
-			log.Fatalf("Could not switch back to working directory %s: %s\n", wd, err)
-		}
-	}()
-
-	if err := r.v.Unmarshal(config, opts...); err != nil {
+	if err := r.v.Unmarshal(config, viper.DecodeHook(decodeHook)); err != nil {
 		return err
 	}
 
@@ -113,6 +104,25 @@ func (r rattlesnake) OnConfigChange(run func()) {
 func (r rattlesnake) IsConfigurationNotFoundError(err error) bool {
 	_, notfound := err.(viper.ConfigFileNotFoundError)
 	return notfound
+}
+
+func newPathResolverHook(workdir string) mapstructure.DecodeHookFuncType {
+	return func(dataType reflect.Type, targetType reflect.Type, data interface{}) (interface{}, error) {
+		if dataType.Kind() != reflect.String {
+			return data, nil
+		}
+
+		if targetType != reflect.TypeOf(Path("")) {
+			return data, nil
+		}
+
+		path := data.(string)
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(workdir, path)
+		}
+
+		return Path(filepath.Clean(path)), nil
+	}
 }
 
 // implements automatic unmarshalling from environment variables

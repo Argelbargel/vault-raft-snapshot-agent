@@ -146,12 +146,12 @@ An AppRole allows the snapshot agent to automatically rotate tokens to avoid lon
 vault:
   auth:
     approle:
-      id: "<role-id>
+      role: "<role-id>
       secret: "<secret-id>"
 ```
 
 ##### Configuration options
-- `id` **(required)** - specifies the role_id used to call the Vault API.  See the authentication steps below
+- `role` **(required)** - specifies the role_id used to call the Vault API.  See the authentication steps below
 - `secret` **(required)** - specifies the secret_id used to call the Vault API
 - `path` *(default: approle)* - specifies the backend-name used to select the login-endpoint (`auth/<path>/login`)
 

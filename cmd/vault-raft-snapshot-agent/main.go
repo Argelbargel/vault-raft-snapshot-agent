@@ -9,8 +9,8 @@ Usage:
 
 The flags are:
 
-	    -v, -version
-			Prints version information and exits
+	-v, -version
+		Prints version information and exits
 
 The options are:
 
@@ -99,17 +99,11 @@ Options:
 }
 
 func startSnapshotter(configFile cli.Path) {
-	config, err := internal.ReadConfig(configFile)
+	snapshotter, err := internal.CreateSnapshotter(configFile)
 	if err != nil {
-		log.Fatalf("Could not read configuration: %s\n", err)
+		log.Fatalf("Cannot create snapshotter: %s\n", err)
 	}
 
-	snapshotter, err := internal.CreateSnapshotter(config)
-	if err != nil {
-		log.Fatalf("Cannot instantiate snapshotter: %s\n", err)
-	}
-
-	internal.WatchConfigAndReconfigure(snapshotter)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
