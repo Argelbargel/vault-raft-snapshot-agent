@@ -69,8 +69,10 @@ func TestOnConfigChangePassesConfigToHandler(t *testing.T) {
 	configFile := fmt.Sprintf("%s/config.json", t.TempDir())
 	config := configConfigStub{hasUploaders: true}
 
-	writeFile(t, configFile, "{\"vault\":{\"url\": \"test\"}}")
-	err := ReadConfig(&config, configFile)
+	err :=writeFile(t, configFile, "{\"vault\":{\"url\": \"test\"}}")
+	assert.NoError(t, err, "writing config file failed unexpectedly")
+	
+	err = ReadConfig(&config, configFile)
 
 	assert.NoError(t, err, "ReadConfig failed unexpectedly")
 	assert.Equal(t, "test", config.Vault.Url)
@@ -81,7 +83,9 @@ func TestOnConfigChangePassesConfigToHandler(t *testing.T) {
 		return nil
 	})
 
-	writeFile(t, configFile, "{\"vault\":{\"url\": \"new\"}}")
+	err = writeFile(t, configFile, "{\"vault\":{\"url\": \"new\"}}")
+	assert.NoError(t, err, "writing config file failed unexpectedly")
+
 	assert.NoError(t, <-errCh, "OnConfigChange failed unexpectedly")
 
 	newConfig := <-configCh
@@ -94,9 +98,10 @@ func TestOnConfigChangeIgnoresInvalidConfiguration(t *testing.T) {
 	configFile := fmt.Sprintf("%s/config.json", t.TempDir())
 	config := configConfigStub{hasUploaders: true}
 
-	writeFile(t, configFile, "{\"vault\":{\"url\": \"test\"}}")
-	err := ReadConfig(&config, configFile)
+	err := writeFile(t, configFile, "{\"vault\":{\"url\": \"test\"}}")
+	assert.NoError(t, err, "writing config file failed unexpectedly")
 
+	err = ReadConfig(&config, configFile)
 	assert.NoError(t, err, "ReadConfig failed unexpectedly")
 	assert.Equal(t, "test", config.Vault.Url)
 
@@ -106,7 +111,9 @@ func TestOnConfigChangeIgnoresInvalidConfiguration(t *testing.T) {
 		return nil
 	})
 
-	writeFile(t, configFile, "{\"vault\":{}}")
+	err = writeFile(t, configFile, "{\"vault\":{}}")
+	assert.NoError(t, err, "writing config file failed unexpectedly")
+
 	assert.Error(t, <-errCh, "OnConfigChange should fail for invalid configuration")
 	assert.Equal(t, "", newConfig.Vault.Url)
 

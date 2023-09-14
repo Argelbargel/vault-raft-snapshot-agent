@@ -30,7 +30,9 @@ func TestUnmarshalResolvesRelativePaths(t *testing.T) {
 	t.Setenv("TEST_PATH", "./file.ext")
 
 	config := rattlesnakeConfigStub{}
-	parser.Unmarshal(&config)
+
+	err = parser.Unmarshal(&config)
+	assert.NoError(t, err, "Unmarshal failed unexpectedly")
 
 	assert.Equal(t, Path(filepath.Clean(fmt.Sprintf("%s/file.ext", wd))), config.Path)
 }

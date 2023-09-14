@@ -10,8 +10,8 @@ type AWSSignatureType string
 
 const (
 	AWS_EC2_PKCS7    AWSSignatureType = "pkcs7"
-	AWS_ECS_IDENTITY                  = "identity"
-	AWS_EC2_RSA2048                   = "rsa2048"
+	AWS_ECS_IDENTITY AWSSignatureType = "identity"
+	AWS_EC2_RSA2048  AWSSignatureType = "rsa2048"
 )
 
 type AWSAuthConfig struct {
@@ -34,10 +34,8 @@ func createAWSAuth(config AWSAuthConfig) (authMethod, error) {
 			break
 		case AWS_ECS_IDENTITY:
 			loginOpts = append(loginOpts, aws.WithIdentitySignature())
-			break
 		case AWS_EC2_RSA2048:
 			loginOpts = append(loginOpts, aws.WithRSA2048Signature())
-			break
 		default:
 			return authMethod{}, fmt.Errorf("unknown signature-type %s", config.EC2SignatureType)
 		}
