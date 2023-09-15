@@ -17,7 +17,7 @@ type localUploaderImpl struct {
 	path string
 }
 
-func createLocalUploader(config LocalUploaderConfig) (uploader[os.FileInfo], error) {
+func createLocalUploader(ctx context.Context, config LocalUploaderConfig) (uploader[os.FileInfo], error) {
 	return uploader[os.FileInfo]{
 		localUploaderImpl{
 			path: config.Path,

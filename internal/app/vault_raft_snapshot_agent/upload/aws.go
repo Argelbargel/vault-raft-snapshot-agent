@@ -39,8 +39,8 @@ type awsUploaderImpl struct {
 	sse       bool
 }
 
-func createAWSUploader(config AWSUploaderConfig) (*uploader[s3Types.Object], error) {
-	clientConfig, err := awsConfig.LoadDefaultConfig(context.Background(), awsConfig.WithRegion(config.Region))
+func createAWSUploader(ctx context.Context, config AWSUploaderConfig) (*uploader[s3Types.Object], error) {
+	clientConfig, err := awsConfig.LoadDefaultConfig(ctx, awsConfig.WithRegion(config.Region))
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to load default aws config: %w", err)

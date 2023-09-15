@@ -19,8 +19,7 @@ type gcpUploaderImpl struct {
 	bucket      *storage.BucketHandle
 }
 
-func createGCPUploader(config GCPUploaderConfig) (*uploader[storage.ObjectAttrs], error) {
-	ctx := context.Background()
+func createGCPUploader(ctx context.Context, config GCPUploaderConfig) (*uploader[storage.ObjectAttrs], error) {
 	client, err := storage.NewClient(ctx)
 	if err != nil {
 		return nil, err
@@ -42,7 +41,7 @@ func (u gcpUploaderImpl) Destination() string {
 // implements interface uploaderImpl
 func (u gcpUploaderImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
 	obj := u.bucket.Object(name)
-	w := obj.NewWriter(context.Background())
+	w := obj.NewWriter(ctx)
 
 	if _, err := io.Copy(w, data); err != nil {
 		return err

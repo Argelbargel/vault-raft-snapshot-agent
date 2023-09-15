@@ -22,7 +22,7 @@ type azureUploaderImpl struct {
 	container string
 }
 
-func createAzureUploader(config AzureUploaderConfig) (*uploader[*container.BlobItem], error) {
+func createAzureUploader(ctx context.Context, config AzureUploaderConfig) (*uploader[*container.BlobItem], error) {
 	credential, err := azblob.NewSharedKeyCredential(config.AccountName, config.AccountKey)
 	if err != nil {
 		return nil, fmt.Errorf("invalid credentials for azure: %w", err)

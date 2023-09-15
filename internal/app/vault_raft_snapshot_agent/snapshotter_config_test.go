@@ -125,6 +125,16 @@ func TestReadCompleteConfig(t *testing.T) {
 			Local: upload.LocalUploaderConfig{
 				Path: ".",
 			},
+			Swift: upload.SwiftUploaderConfig{
+				Container: "test-container",
+				UserName:  "test-username",
+				ApiKey:    "test-api-key",
+				AuthUrl:   "http://auth.com",
+				Domain:    "http://user.com",
+				Region:    "test-region",
+				TenantId:  "test-tenant",
+				Timeout:   180 * time.Second,
+			},
 		},
 	}
 
@@ -197,6 +207,10 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 			GCP: upload.GCPUploaderConfig{Empty: true},
 			Local: upload.LocalUploaderConfig{
 				Path: ".",
+			},
+			Swift: upload.SwiftUploaderConfig{
+				Timeout: time.Minute,
+				Empty:       true,
 			},
 		},
 	}
