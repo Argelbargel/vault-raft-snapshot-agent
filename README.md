@@ -90,8 +90,11 @@ uploaders:
 ### Environment variables
 Vault Raft Snapshot Agent supports configuration with environment variables. For some common options there are shortcuts defined:
 - `VAULT_ADDR` configures the url to the vault-server (same as `vault.url`)
-- `AWS_ACCESS_KEY_ID` configures the access key for the AWS uploader (same as `uploaders.aws.credentials.key`)
-- `SECRET_ACCESS_KEY` configures the access secret for the AWS uploader (same as `uploaders.aws.credentials.secret`)
+- `AWS_ACCESS_KEY_ID` configures the access key for the AWS uploader (same as `uploaders.aws.credentials.key`) and AWS EC2 authentication
+- `AWS_SECRET_ACCESS_KEY` configures the access secret for the AWS uploader (same as `uploaders.aws.credentials.secret`) and AWS EC2 authentication
+- `AWS_SESSION_TOKEN` configures the session-token for AWS EC2 authentication
+- `AWS_SHARED_CREDENTIALS_FILE` configures AWS EC2 authentication from a file
+
 
 Any other option can be set by prefixing `VRSA_` to the uppercased path to the key and replacing `.` with `_`. For example `VRSA_SNAPSHOTS_FREQUENCY=<value>` configures the snapshot-frequency and `VRSA_VAULT_AUTH_TOKEN=<value>` configures the token authentication for vault.
 
@@ -260,7 +263,7 @@ uploaders:
       secret: <secret>
 ```
 - `key` **(required)** - specifies the access key. It's recommended to use the standard `AWS_ACCESS_KEY_ID` env var, though
-- `secret` **(required)** - specifies the secret It's recommended to use the standard `SECRET_ACCESS_KEY` env var, though
+- `secret` **(required)** - specifies the secret It's recommended to use the standard `AWS_SECRET_ACCESS_KEY` env var, though
 
 
 #### Azure Storage

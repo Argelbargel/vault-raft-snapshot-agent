@@ -23,7 +23,7 @@ func (p Parser[T]) ReadConfig(config T, file string) error {
 		map[string]string{
 			"vault.url":                        "VAULT_ADDR",
 			"uploaders.aws.credentials.key":    "AWS_ACCESS_KEY_ID",
-			"uploaders.aws.credentials.secret": "SECRET_ACCESS_KEY",
+			"uploaders.aws.credentials.secret": "AWS_SECRET_ACCESS_KEY",
 		},
 	)
 	if err != nil {
