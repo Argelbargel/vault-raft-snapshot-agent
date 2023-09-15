@@ -30,8 +30,8 @@ func createAWSAuth(config AWSAuthConfig) (authMethod, error) {
 	if config.EC2Nonce != "" {
 		loginOpts = append(loginOpts, aws.WithNonce(config.EC2Nonce), aws.WithEC2Auth())
 		switch config.EC2SignatureType {
+		case "":
 		case AWS_EC2_PKCS7:
-			break
 		case AWS_ECS_IDENTITY:
 			loginOpts = append(loginOpts, aws.WithIdentitySignature())
 		case AWS_EC2_RSA2048:
