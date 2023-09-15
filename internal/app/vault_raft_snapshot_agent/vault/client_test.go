@@ -14,7 +14,7 @@ import (
 
 func TestClientRefreshesAuthAfterTokenExpires(t *testing.T) {
 	auth := &clientVaultAPIAuthStub{
-		leaseDuration: 60,
+		leaseDuration: time.Minute,
 	}
 
 	client := NewVaultClient[any, *clientVaultAPIAuthStub](
