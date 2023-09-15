@@ -9,10 +9,10 @@ import (
 )
 
 type UploadersConfig struct {
-	AWS   AWSConfig   `default:"{\"Empty\": true}" mapstructure:"aws"`
-	Azure AzureConfig `default:"{\"Empty\": true}" mapstructure:"azure"`
-	GCP   GCPConfig   `default:"{\"Empty\": true}" mapstructure:"google"`
-	Local LocalConfig `default:"{\"Empty\": true}" mapstructure:"local"`
+	AWS   AWSUploaderConfig   `default:"{\"Empty\": true}" mapstructure:"aws"`
+	Azure AzureUploaderConfig `default:"{\"Empty\": true}" mapstructure:"azure"`
+	GCP   GCPUploaderConfig   `default:"{\"Empty\": true}" mapstructure:"google"`
+	Local LocalUploaderConfig `default:"{\"Empty\": true}" mapstructure:"local"`
 }
 
 type Uploader interface {

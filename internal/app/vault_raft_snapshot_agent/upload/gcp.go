@@ -9,7 +9,7 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-type GCPConfig struct {
+type GCPUploaderConfig struct {
 	Bucket string `validate:"required_if=Empty false"`
 	Empty  bool
 }
@@ -19,7 +19,7 @@ type gcpUploaderImpl struct {
 	bucket      *storage.BucketHandle
 }
 
-func createGCPUploader(config GCPConfig) (*uploader[storage.ObjectAttrs], error) {
+func createGCPUploader(config GCPUploaderConfig) (*uploader[storage.ObjectAttrs], error) {
 	ctx := context.Background()
 	client, err := storage.NewClient(ctx)
 	if err != nil {

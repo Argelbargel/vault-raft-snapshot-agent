@@ -101,28 +101,28 @@ func TestReadCompleteConfig(t *testing.T) {
 			TimestampFormat: "2006-01-02",
 		},
 		Uploaders: upload.UploadersConfig{
-			AWS: upload.AWSConfig{
+			AWS: upload.AWSUploaderConfig{
 				Endpoint:                "test-endpoint",
 				Region:                  "test-region",
 				Bucket:                  "test-bucket",
 				KeyPrefix:               "test-prefix",
 				UseServerSideEncryption: true,
 				ForcePathStyle:          true,
-				Credentials: upload.AWSCredentialsConfig{
+				Credentials: upload.AWSUploaderCredentialsConfig{
 					Key:    "test-key",
 					Secret: "test-secret",
 				},
 			},
-			Azure: upload.AzureConfig{
+			Azure: upload.AzureUploaderConfig{
 				AccountName:   "test-account",
 				AccountKey:    "test-key",
 				ContainerName: "test-container",
 				CloudDomain:   "blob.core.chinacloudapi.cn",
 			},
-			GCP: upload.GCPConfig{
+			GCP: upload.GCPUploaderConfig{
 				Bucket: "test-bucket",
 			},
-			Local: upload.LocalConfig{
+			Local: upload.LocalUploaderConfig{
 				Path: ".",
 			},
 		},
@@ -186,16 +186,16 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 			TimestampFormat: "2006-01-02T15-04-05Z-0700",
 		},
 		Uploaders: upload.UploadersConfig{
-			AWS: upload.AWSConfig{
-				Credentials: upload.AWSCredentialsConfig{Empty: true},
+			AWS: upload.AWSUploaderConfig{
+				Credentials: upload.AWSUploaderCredentialsConfig{Empty: true},
 				Empty:       true,
 			},
-			Azure: upload.AzureConfig{
+			Azure: upload.AzureUploaderConfig{
 				CloudDomain: "blob.core.windows.net",
 				Empty:       true,
 			},
-			GCP: upload.GCPConfig{Empty: true},
-			Local: upload.LocalConfig{
+			GCP: upload.GCPUploaderConfig{Empty: true},
+			Local: upload.LocalUploaderConfig{
 				Path: ".",
 			},
 		},
