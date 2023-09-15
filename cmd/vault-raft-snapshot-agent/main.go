@@ -44,6 +44,12 @@ import (
 var Version = "development"
 var Platform = "linux/amd64"
 
+var snapshotterOptions internal.SnapshotterOptions = internal.SnapshotterOptions{
+	ConfigFileName:        "snapshots",
+	ConfigFileSearchPaths: []string{"/etc/vault.d/", "."},
+	EnvPrefix:             "VRSA",
+}
+
 type quietBoolFlag struct {
 	cli.BoolFlag
 }
@@ -99,7 +105,8 @@ Options:
 }
 
 func startSnapshotter(configFile cli.Path) {
-	snapshotter, err := internal.CreateSnapshotter(configFile)
+	snapshotterOptions.ConfigFilePath = configFile
+	snapshotter, err := internal.CreateSnapshotter(snapshotterOptions)
 	if err != nil {
 		log.Fatalf("Cannot create snapshotter: %s\n", err)
 	}

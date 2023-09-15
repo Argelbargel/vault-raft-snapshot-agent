@@ -34,8 +34,11 @@ type SnapshotConfig struct {
 	TimestampFormat string        `default:"2006-01-02T15-04-05Z-0700"`
 }
 
-type snapshotterVaultAPI interface {
-	TakeSnapshot(ctx context.Context, writer io.Writer) error
+type SnapshotterOptions struct {
+	ConfigFileName        string
+	ConfigFileSearchPaths []string
+	ConfigFilePath        string
+	EnvPrefix             string
 }
 
 type Snapshotter struct {
@@ -47,10 +50,15 @@ type Snapshotter struct {
 	snapshotTimer *time.Timer
 }
 
-func CreateSnapshotter(configFile string) (*Snapshotter, error) {
-	c := SnapshotterConfig{}
+type snapshotterVaultAPI interface {
+	TakeSnapshot(ctx context.Context, writer io.Writer) error
+}
 
-	if err := config.ReadConfig(&c, configFile); err != nil {
+func CreateSnapshotter(options SnapshotterOptions) (*Snapshotter, error) {
+	c := SnapshotterConfig{}
+	parser := config.NewParser[*SnapshotterConfig](options.ConfigFileName, options.EnvPrefix, options.ConfigFileSearchPaths...)
+
+	if err := parser.ReadConfig(&c, options.ConfigFilePath); err != nil {
 		return nil, err
 	}
 
@@ -59,7 +67,7 @@ func CreateSnapshotter(configFile string) (*Snapshotter, error) {
 		return nil, err
 	}
 
-	config.OnConfigChange(
+	parser.OnConfigChange(
 		&SnapshotterConfig{},
 		func(config *SnapshotterConfig) error {
 			if err := snapshotter.reconfigure(*config); err != nil {

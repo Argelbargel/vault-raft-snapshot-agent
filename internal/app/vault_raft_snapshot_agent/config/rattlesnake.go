@@ -21,10 +21,10 @@ type rattlesnake struct {
 	v *viper.Viper
 }
 
-func newRattlesnake(configName string, envPrefix string, configPaths ...string) rattlesnake {
+func newRattlesnake(envPrefix string, configName string, configPaths ...string) rattlesnake {
 	v := viper.New()
-	v.SetConfigName(configName)
 	v.SetEnvPrefix(envPrefix)
+	v.SetConfigName(configName)
 	for _, path := range configPaths {
 		v.AddConfigPath(path)
 	}

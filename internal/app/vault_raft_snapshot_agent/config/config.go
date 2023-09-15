@@ -5,15 +5,21 @@ import (
 	"log"
 )
 
-var parser rattlesnake = newRattlesnake("snapshot", "VRSA", "/etc/vault.d/", ".")
+type Parser[T Configuration] struct {
+	delegate rattlesnake
+}
 
-type Config interface {
+type Configuration interface {
 	HasUploaders() bool
 }
 
+func NewParser[T Configuration](envPrefix string, configFilename string, configSearchPaths ...string) Parser[T] {
+	return Parser[T]{newRattlesnake(envPrefix, configFilename, configSearchPaths...)}
+}
+
 // ReadConfig reads the configuration file
-func ReadConfig[T Config](config T, file string) error {
-	err := parser.BindAllEnv(
+func (p Parser[T]) ReadConfig(config T, file string) error {
+	err := p.delegate.BindAllEnv(
 		map[string]string{
 			"vault.url":                        "VAULT_ADDR",
 			"uploaders.aws.credentials.key":    "AWS_ACCESS_KEY_ID",
@@ -25,24 +31,24 @@ func ReadConfig[T Config](config T, file string) error {
 	}
 
 	if file != "" {
-		if err := parser.SetConfigFile(file); err != nil {
+		if err := p.delegate.SetConfigFile(file); err != nil {
 			return err
 		}
 	}
 
-	if err := parser.ReadInConfig(); err != nil {
-		if parser.IsConfigurationNotFoundError(err) {
+	if err := p.delegate.ReadInConfig(); err != nil {
+		if p.delegate.IsConfigurationNotFoundError(err) {
 			log.Printf("Could not find any configuration file, will create configuration based solely on environment...")
 		} else {
 			return err
 		}
 	}
 
-	if usedConfigFile := parser.ConfigFileUsed(); usedConfigFile != "" {
+	if usedConfigFile := p.delegate.ConfigFileUsed(); usedConfigFile != "" {
 		log.Printf("Using configuration from %s...\n", usedConfigFile)
 	}
 
-	if err := parser.Unmarshal(config); err != nil {
+	if err := p.delegate.Unmarshal(config); err != nil {
 		return fmt.Errorf("could not unmarshal configuration: %s", err)
 	}
 
@@ -53,12 +59,12 @@ func ReadConfig[T Config](config T, file string) error {
 	return nil
 }
 
-func OnConfigChange[T Config](config T, handler func(config T) error) <-chan error {
+func (p Parser[T]) OnConfigChange(config T, handler func(config T) error) <-chan error {
 	ch := make(chan error, 1)
 
-	parser.OnConfigChange(func() {
-		if err := parser.Unmarshal(config); err != nil {
-			log.Printf("Ignoring configuration change as configuration in %s is invalid: %v\n", parser.ConfigFileUsed(), err)
+	p.delegate.OnConfigChange(func() {
+		if err := p.delegate.Unmarshal(config); err != nil {
+			log.Printf("Ignoring configuration change as configuration in %s is invalid: %v\n", p.delegate.ConfigFileUsed(), err)
 			ch <- err
 		} else {
 			ch <- handler(config)

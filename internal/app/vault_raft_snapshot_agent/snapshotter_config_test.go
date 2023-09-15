@@ -35,7 +35,7 @@ func relativeTo(configFile string, file string) config.Path {
 		file = filepath.Join(filepath.Dir(configFile), file)
 	}
 
-	if !filepath.IsAbs(file)  && !strings.HasPrefix(file, "/") {
+	if !filepath.IsAbs(file) && !strings.HasPrefix(file, "/") {
 		file, _ = filepath.Abs(file)
 		file = filepath.Clean(file)
 	}
@@ -128,11 +128,12 @@ func TestReadCompleteConfig(t *testing.T) {
 		},
 	}
 
-	c := SnapshotterConfig{}
-	err := config.ReadConfig(&c, configFile)
+	data := SnapshotterConfig{}
+	parser := config.NewParser[*SnapshotterConfig]("VRSA", "")
+	err := parser.ReadConfig(&data, configFile)
 
 	assert.NoError(t, err, "ReadConfig(%s) failed unexpectedly", configFile)
-	assert.Equal(t, expectedConfig, c)
+	assert.Equal(t, expectedConfig, data)
 }
 
 func TestReadConfigSetsDefaultValues(t *testing.T) {
@@ -200,11 +201,12 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 		},
 	}
 
-	c := SnapshotterConfig{}
-	err := config.ReadConfig(&c, configFile)
+	data := SnapshotterConfig{}
+	parser := config.NewParser[*SnapshotterConfig]("VRSA", "")
+	err := parser.ReadConfig(&data, configFile)
 
 	assert.NoError(t, err, "ReadConfig(%s) failed unexpectedly", configFile)
-	assert.Equal(t, expectedConfig, c)
+	assert.Equal(t, expectedConfig, data)
 }
 
 func init() {
