@@ -51,7 +51,7 @@ func TestClientDoesNotTakeSnapshotIfAuthRefreshFails(t *testing.T) {
 	err := client.TakeSnapshot(context.Background(), bufio.NewWriter(&bytes.Buffer{}))
 
 	assert.Error(t, err, "TakeSnapshot() returned no error although auth-refresh failed")
-	assert.NotEqual(t, authStub.leaseDuration, client.tokenExpiration, "TakeSnapshot() refreshed token-expiration although auth-refresh failed")
+	assert.NotEqual(t, authStub.leaseDuration, client.authExpiration, "TakeSnapshot() refreshed token-expiration although auth-refresh failed")
 	assert.False(t, clientApi.snapshotTaken, "TakeSnapshot() took snapshot although aut-refresh failed")
 }
 
@@ -99,7 +99,7 @@ func TestClientDoesNotTakeSnapshotIfLeaderCheckFails(t *testing.T) {
 
 	assert.Error(t, err, "TakeSnapshot() reported success or returned no error when leader-check failed")
 	assert.False(t, api.snapshotTaken, "TakeSnapshot() took snapshot when leader-check failed")
-	assert.NotEqual(t, authStub.leaseDuration, client.tokenExpiration)
+	assert.NotEqual(t, authStub.leaseDuration, client.authExpiration)
 }
 
 func assertAuthRefresh(t *testing.T, refreshed bool, client *VaultClient[any, *clientVaultAPIAuthStub], auth *clientVaultAPIAuthStub) {
@@ -114,9 +114,9 @@ func assertAuthRefresh(t *testing.T, refreshed bool, client *VaultClient[any, *c
 		}
 	}
 
-	expectedTokenExpiration := time.Now().Add((time.Second * auth.leaseDuration) / 2)
-	if refreshed && client.tokenExpiration.Before(expectedTokenExpiration) {
-		t.Fatalf("client did not accept tokenExpiration from auth! expected: %v, client: %v, lease-duration: %v", expectedTokenExpiration, client.tokenExpiration, auth.leaseDuration)
+	expectedTokenExpiration := time.Now().Add(auth.leaseDuration / 2)
+	if refreshed && client.authExpiration.Before(expectedTokenExpiration) {
+		t.Fatalf("client did not accept tokenExpiration from auth! expected: %v, client: %v, lease-duration: %v", expectedTokenExpiration, client.authExpiration, auth.leaseDuration)
 	}
 }
 

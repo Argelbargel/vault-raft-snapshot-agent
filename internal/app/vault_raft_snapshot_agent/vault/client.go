@@ -20,9 +20,9 @@ type VaultClientConfig struct {
 // public implementation of the client communicating with vault
 // to authenticate and take snapshots
 type VaultClient[C any, A clientVaultAPIAuth[C]] struct {
-	api             clientVaultAPI[C, A]
-	auth            A
-	tokenExpiration time.Time
+	api            clientVaultAPI[C, A]
+	auth           A
+	authExpiration time.Time
 }
 
 // internal definition of vault-api used by VaultClient
@@ -82,12 +82,12 @@ func (c *VaultClient[C, A]) TakeSnapshot(ctx context.Context, writer io.Writer) 
 }
 
 func (c *VaultClient[C, A]) refreshAuth(ctx context.Context) error {
-	if c.tokenExpiration.Before(time.Now()) {
+	if c.authExpiration.Before(time.Now()) {
 		leaseDuration, err := c.api.RefreshAuth(ctx, c.auth)
 		if err != nil {
 			return fmt.Errorf("could not refresh auth: %s", err)
 		}
-		c.tokenExpiration = time.Now().Add((time.Second * leaseDuration) / 2)
+		c.authExpiration = time.Now().Add(leaseDuration / 2)
 	}
 	return nil
 }
