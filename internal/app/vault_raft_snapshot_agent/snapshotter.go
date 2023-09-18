@@ -56,7 +56,7 @@ type snapshotterVaultAPI interface {
 
 func CreateSnapshotter(options SnapshotterOptions) (*Snapshotter, error) {
 	data := SnapshotterConfig{}
-	parser := config.NewParser[*SnapshotterConfig](options.ConfigFileName, options.EnvPrefix, options.ConfigFileSearchPaths...)
+	parser := config.NewParser[*SnapshotterConfig](options.EnvPrefix, options.ConfigFileName, options.ConfigFileSearchPaths...)
 
 	if err := parser.ReadConfig(&data, options.ConfigFilePath); err != nil {
 		return nil, err

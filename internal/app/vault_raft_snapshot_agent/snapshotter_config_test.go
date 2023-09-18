@@ -130,7 +130,7 @@ func TestReadCompleteConfig(t *testing.T) {
 }
 
 func TestReadConfigSetsDefaultValues(t *testing.T) {
-	configFile := "../../../testdata/defaults.yaml"
+	configFile := "../../../testdata/snapshots.yaml"
 
 	expectedConfig := SnapshotterConfig{
 		Vault: vault.ClientConfig{
