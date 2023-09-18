@@ -94,12 +94,7 @@ func (s *Snapshotter) reconfigure(config SnapshotterConfig) error {
 		return err
 	}
 
-	uploaders, err := upload.CreateUploaders(config.Uploaders)
-	if err != nil {
-		return err
-	}
-
-	s.Configure(config.Snapshots, client, uploaders)
+	s.Configure(config.Snapshots, client, upload.CreateUploaders(config.Uploaders))
 	return nil
 }
 

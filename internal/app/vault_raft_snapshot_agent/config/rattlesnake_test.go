@@ -99,3 +99,13 @@ func TestOnConfigChangeRunsHandler(t *testing.T) {
 
 	assert.True(t, <-changed)
 }
+
+func TestReadInConfigFindsConfigFile(t *testing.T) {
+	rattlesnake := newRattlesnake("test", "rattlesnake", "../../../../testdata/")
+	err := rattlesnake.ReadInConfig()
+	assert.NoError(t, err, "ReadInConfig failed unexpectedly")
+
+	expectedConfigfile, err := filepath.Abs("../../../../testdata/rattlesnake.yaml")
+	assert.NoError(t, err, "Abs failed unexpectedly")
+	assert.Equal(t, expectedConfigfile, rattlesnake.ConfigFileUsed())
+}

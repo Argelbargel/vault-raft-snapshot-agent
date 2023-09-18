@@ -21,7 +21,7 @@ type Uploader interface {
 	Upload(ctx context.Context, snapshot io.Reader, prefix string, timestamp string, suffix string, retain int) error
 }
 
-func CreateUploaders(config UploadersConfig) ([]Uploader, error) {
+func CreateUploaders(config UploadersConfig) []Uploader {
 	var uploaders []Uploader
 
 	if !config.AWS.Empty {
@@ -44,7 +44,7 @@ func CreateUploaders(config UploadersConfig) ([]Uploader, error) {
 		uploaders = append(uploaders, createSwiftUploader(config.Swift))
 	}
 
-	return uploaders, nil
+	return uploaders
 }
 
 type uploaderImpl[CONF any, CLIENT any, OBJ any] interface {
