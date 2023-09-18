@@ -1,29 +1,27 @@
 package auth
 
 import (
-	"testing"
-
 	"github.com/hashicorp/vault/api/auth/userpass"
-
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestCreateUserpassAuth(t *testing.T) {
 	config := UserPassAuthConfig{
 		Username: "test-user",
 		Password: "test-password",
-		Path: "test-path",
+		Path:     "test-path",
 	}
 
 	expectedAuthMethod, err := userpass.NewUserpassAuth(
-		config.Username,
-		&userpass.Password{FromString: config.Password},
+		config.Username.String(),
+		&userpass.Password{FromString: config.Password.String()},
 		userpass.WithMountPath(config.Path),
 	)
 	assert.NoError(t, err, "NewUserPassAuth failed unexpectedly")
 
-	auth, err := createUserPassAuth(config)
-	assert.NoError(t, err, "createUserpassAuth failed unexpectedly")
+	authMethod, err := createUserPassAuth(config).createAuthMethod()
+	assert.NoError(t, err, "createAuthMethod failed unexpectedly")
 
-	assert.Equal(t, expectedAuthMethod, auth.delegate)
+	assert.Equal(t, expectedAuthMethod, authMethod)
 }

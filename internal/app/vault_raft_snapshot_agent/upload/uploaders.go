@@ -21,91 +21,79 @@ type Uploader interface {
 	Upload(ctx context.Context, snapshot io.Reader, prefix string, timestamp string, suffix string, retain int) error
 }
 
-func CreateUploaders(ctx context.Context, config UploadersConfig) ([]Uploader, error) {
+func CreateUploaders(config UploadersConfig) ([]Uploader, error) {
 	var uploaders []Uploader
 
 	if !config.AWS.Empty {
-		aws, err := createAWSUploader(ctx, config.AWS)
-		if err != nil {
-			return nil, err
-		}
-		uploaders = append(uploaders, aws)
+		uploaders = append(uploaders, createAWSUploader(config.AWS))
 	}
 
 	if !config.Azure.Empty {
-		azure, err := createAzureUploader(ctx, config.Azure)
-		if err != nil {
-			return nil, err
-		}
-		uploaders = append(uploaders, azure)
+		uploaders = append(uploaders, createAzureUploader(config.Azure))
 	}
 
 	if !config.GCP.Empty {
-		gcp, err := createGCPUploader(ctx, config.GCP)
-		if err != nil {
-			return nil, err
-		}
-		uploaders = append(uploaders, gcp)
+		uploaders = append(uploaders, createGCPUploader(config.GCP))
 	}
 
 	if !config.Local.Empty {
-		local, err := createLocalUploader(ctx, config.Local)
-		if err != nil {
-			return nil, err
-		}
-		uploaders = append(uploaders, local)
+		uploaders = append(uploaders, createLocalUploader(config.Local))
 	}
 
 	if !config.Swift.Empty {
-		local, err := createSwiftUploader(ctx, config.Swift)
-		if err != nil {
-			return nil, err
-		}
-		uploaders = append(uploaders, local)
+		uploaders = append(uploaders, createSwiftUploader(config.Swift))
 	}
 
 	return uploaders, nil
 }
 
-type uploaderImpl[T any] interface {
-	uploadSnapshot(ctx context.Context, name string, data io.Reader) error
-	deleteSnapshot(ctx context.Context, snapshot T) error
-	listSnapshots(ctx context.Context, prefix string, ext string) ([]T, error)
-	compareSnapshots(a, b T) int
+type uploaderImpl[CONF any, CLIENT any, OBJ any] interface {
+	connect(ctx context.Context, config CONF) (CLIENT, error)
+	destination(config CONF) string
+	uploadSnapshot(ctx context.Context, client CLIENT, name string, data io.Reader) error
+	deleteSnapshot(ctx context.Context, client CLIENT, snapshot OBJ) error
+	listSnapshots(ctx context.Context, client CLIENT, prefix string, ext string) ([]OBJ, error)
+	compareSnapshots(a, b OBJ) int
 }
 
-type uploader[T any] struct {
-	impl uploaderImpl[T]
+type uploader[CONF any, CLIENT any, OBJ any] struct {
+	config CONF
+	impl   uploaderImpl[CONF, CLIENT, OBJ]
 }
 
-func (u uploader[T]) Destination() string {
-	return ""
+func (u uploader[CNF, CLI, O]) Destination() string {
+	return u.impl.destination(u.config)
 }
 
-func (u uploader[T]) Upload(ctx context.Context, snapshot io.Reader, prefix string, timestamp string, suffix string, retain int) error {
+func (u uploader[CNF, CLI, O]) Upload(ctx context.Context, snapshot io.Reader, prefix string, timestamp string, suffix string, retain int) error {
+	client, err := u.impl.connect(ctx, u.config)
+	if err != nil {
+		return fmt.Errorf("could not connect to %s: %s", u.Destination(), err)
+	}
+
 	name := strings.Join([]string{prefix, timestamp, suffix}, "")
-	if err := u.impl.uploadSnapshot(ctx, name, snapshot); err != nil {
+	if err := u.impl.uploadSnapshot(ctx, client, name, snapshot); err != nil {
 		return fmt.Errorf("error uploading snapshot to %s: %w", u.Destination(), err)
 	}
 
 	if retain > 0 {
-		return u.deleteSnapshots(ctx, prefix, suffix, retain)
+		return u.deleteSnapshots(ctx, client, prefix, suffix, retain)
 	}
 
 	return nil
 }
 
-func (u uploader[T]) deleteSnapshots(ctx context.Context, prefix string, suffix string, retain int) error {
-	snapshots, err := u.impl.listSnapshots(ctx, prefix, suffix)
+func (u uploader[CNF, CLI, O]) deleteSnapshots(ctx context.Context, client CLI, prefix string, suffix string, retain int) error {
+	snapshots, err := u.impl.listSnapshots(ctx, client, prefix, suffix)
 	if err != nil {
 		return fmt.Errorf("error getting snapshots from %s: %w", u.Destination(), err)
 	}
 
 	if len(snapshots) > retain {
-		slices.SortFunc(snapshots, func(a, b T) int { return u.impl.compareSnapshots(a, b) * -1 })
+		slices.SortFunc(snapshots, func(a, b O) int { return u.impl.compareSnapshots(a, b) * -1 })
 
 		for _, s := range snapshots[retain:] {
-			if err := u.impl.deleteSnapshot(ctx, s); err != nil {
+			if err := u.impl.deleteSnapshot(ctx, client, s); err != nil {
 				return fmt.Errorf("error deleting snapshot from %s: %w", u.Destination(), err)
 			}
 		}

@@ -1,16 +1,17 @@
 package auth
 
-import(
+import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/secret"
 	"time"
 
 	"github.com/hashicorp/vault/api"
 )
 
 type tokenAuth struct {
-	token string
+	token secret.Secret
 }
 
 type tokenAuthAPI interface {
@@ -19,16 +20,21 @@ type tokenAuthAPI interface {
 	ClearToken()
 }
 
-func createTokenAuth(token string) tokenAuth {
+func createTokenAuth(token secret.Secret) tokenAuth {
 	return tokenAuth{token}
 }
 
-func (auth tokenAuth) Login(ctx context.Context, client *api.Client) (time.Duration, error) {
+func (auth tokenAuth) Login(_ context.Context, client *api.Client) (time.Duration, error) {
 	return auth.login(tokenAuthImpl{client})
 }
 
 func (auth tokenAuth) login(authAPI tokenAuthAPI) (time.Duration, error) {
-	authAPI.SetToken(auth.token)
+	token, err := auth.token.Resolve(true)
+	if err != nil {
+		return 0, err
+	}
+
+	authAPI.SetToken(token)
 	info, err := authAPI.LookupToken()
 	if err != nil {
 		authAPI.ClearToken()

@@ -3,6 +3,7 @@ package upload
 import (
 	"context"
 	"fmt"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/secret"
 	"io"
 	"time"
 
@@ -10,28 +11,57 @@ import (
 )
 
 type SwiftUploaderConfig struct {
-	Container string `validate:"required_if=Empty false"`
-	UserName  string `validate:"required_if=Empty false"`
-	ApiKey    string `validate:"required_if=Empty false"`
-	AuthUrl   string `validate:"required_if=Empty false,omitempty,http_url"`
-	Domain    string `validate:"omitempty,http_url"`
-	Region    string
+	Container string        `validate:"required_if=Empty false"`
+	UserName  secret.Secret `default:"env://SWIFT_USERNAME" validate:"required_if=Empty false"`
+	ApiKey    secret.Secret `default:"env://SWIFT_API_KEY" valide:"required_if=Empty false"`
+	Region    secret.Secret `default:"env://SWIFT_REGION"`
+	AuthUrl   string        `validate:"required_if=Empty false,omitempty,http_url"`
+	Domain    string        `validate:"omitempty,http_url"`
 	TenantId  string
 	Timeout   time.Duration `default:"60s"`
 	Empty     bool
 }
 
 type swiftUploaderImpl struct {
-	connection *swift.Connection
-	container  string
+	container string
 }
 
-func createSwiftUploader(ctx context.Context, config SwiftUploaderConfig) (*uploader[swift.Object], error) {
+func createSwiftUploader(config SwiftUploaderConfig) uploader[SwiftUploaderConfig, *swift.Connection, swift.Object] {
+	return uploader[SwiftUploaderConfig, *swift.Connection, swift.Object]{
+		config,
+		swiftUploaderImpl{config.Container},
+	}
+}
+
+// nolint:unused
+// implements interface uploaderImpl
+func (u swiftUploaderImpl) destination(config SwiftUploaderConfig) string {
+	return fmt.Sprintf("swift container %s", config.Container)
+}
+
+// nolint:unused
+// implements interface uploaderImpl
+func (u swiftUploaderImpl) connect(ctx context.Context, config SwiftUploaderConfig) (*swift.Connection, error) {
+	username, err := config.UserName.Resolve(true)
+	if err != nil {
+		return nil, err
+	}
+
+	apiKey, err := config.ApiKey.Resolve(true)
+	if err != nil {
+		return nil, err
+	}
+
+	region, err := config.Region.Resolve(false)
+	if err != nil {
+		return nil, err
+	}
+
 	conn := swift.Connection{
-		UserName: config.UserName,
-		ApiKey:   config.ApiKey,
+		UserName: username,
+		ApiKey:   apiKey,
 		AuthUrl:  config.AuthUrl,
-		Region:   config.Region,
+		Region:   region,
 		TenantId: config.TenantId,
 		Domain:   config.Domain,
 		Timeout:  config.Timeout,
@@ -45,29 +75,18 @@ func createSwiftUploader(ctx context.Context, config SwiftUploaderConfig) (*uplo
 		return nil, fmt.Errorf("invalid container %s: %s", config.Container, err)
 	}
 
-	return &uploader[swift.Object]{
-		swiftUploaderImpl{
-			connection: &conn,
-			container:  config.Container,
-		},
-	}, nil
+	return &conn, nil
 }
 
 // nolint:unused
 // implements interface uploaderImpl
-func (u swiftUploaderImpl) Destination() string {
-	return fmt.Sprintf("swift container %s", u.container)
-}
-
-// nolint:unused
-// implements interface uploaderImpl
-func (u swiftUploaderImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
-	_, header, err := u.connection.Container(ctx, u.container)
+func (u swiftUploaderImpl) uploadSnapshot(ctx context.Context, client *swift.Connection, name string, data io.Reader) error {
+	_, header, err := client.Container(ctx, u.container)
 	if err != nil {
 		return err
 	}
 
-	object, err := u.connection.ObjectCreate(ctx, u.container, name, false, "", "", header)
+	object, err := client.ObjectCreate(ctx, u.container, name, false, "", "", header)
 	if err != nil {
 		return err
 	}
@@ -85,8 +104,8 @@ func (u swiftUploaderImpl) uploadSnapshot(ctx context.Context, name string, data
 
 // nolint:unused
 // implements interface uploaderImpl
-func (u swiftUploaderImpl) deleteSnapshot(ctx context.Context, snapshot swift.Object) error {
-	if err := u.connection.ObjectDelete(ctx, u.container, snapshot.Name); err != nil {
+func (u swiftUploaderImpl) deleteSnapshot(ctx context.Context, client *swift.Connection, snapshot swift.Object) error {
+	if err := client.ObjectDelete(ctx, u.container, snapshot.Name); err != nil {
 		return err
 	}
 
@@ -95,12 +114,12 @@ func (u swiftUploaderImpl) deleteSnapshot(ctx context.Context, snapshot swift.Ob
 
 // nolint:unused
 // implements interface uploaderImpl
-func (u swiftUploaderImpl) listSnapshots(ctx context.Context, prefix string, ext string) ([]swift.Object, error) {
-	return u.connection.ObjectsAll(ctx, u.container, &swift.ObjectsOpts{Prefix: prefix})
+func (u swiftUploaderImpl) listSnapshots(ctx context.Context, client *swift.Connection, prefix string, _ string) ([]swift.Object, error) {
+	return client.ObjectsAll(ctx, u.container, &swift.ObjectsOpts{Prefix: prefix})
 }
 
 // nolint:unused
 // implements interface uploaderImpl
 func (u swiftUploaderImpl) compareSnapshots(a, b swift.Object) int {
-	return a.LastModified.Compare(a.LastModified)
+	return a.LastModified.Compare(b.LastModified)
 }

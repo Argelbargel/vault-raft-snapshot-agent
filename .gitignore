@@ -17,3 +17,5 @@ local/*
 main
 out/
 .build/
+.idea/
+*.iml

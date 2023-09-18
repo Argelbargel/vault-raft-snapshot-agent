@@ -16,7 +16,7 @@ import (
 )
 
 type SnapshotterConfig struct {
-	Vault     vault.VaultClientConfig
+	Vault     vault.ClientConfig
 	Snapshots SnapshotConfig
 	Uploaders upload.UploadersConfig
 }
@@ -54,7 +54,7 @@ type snapshotterVaultAPI interface {
 	TakeSnapshot(ctx context.Context, writer io.Writer) error
 }
 
-func CreateSnapshotter(ctx context.Context, options SnapshotterOptions) (*Snapshotter, error) {
+func CreateSnapshotter(options SnapshotterOptions) (*Snapshotter, error) {
 	data := SnapshotterConfig{}
 	parser := config.NewParser[*SnapshotterConfig](options.ConfigFileName, options.EnvPrefix, options.ConfigFileSearchPaths...)
 
@@ -62,7 +62,7 @@ func CreateSnapshotter(ctx context.Context, options SnapshotterOptions) (*Snapsh
 		return nil, err
 	}
 
-	snapshotter, err := createSnapshotter(ctx, data)
+	snapshotter, err := createSnapshotter(data)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func CreateSnapshotter(ctx context.Context, options SnapshotterOptions) (*Snapsh
 	parser.OnConfigChange(
 		&SnapshotterConfig{},
 		func(config *SnapshotterConfig) error {
-			if err := snapshotter.reconfigure(ctx, *config); err != nil {
+			if err := snapshotter.reconfigure(*config); err != nil {
 				log.Printf("could not reconfigure snapshotter: %s\n", err)
 				return err
 			}
@@ -81,20 +81,20 @@ func CreateSnapshotter(ctx context.Context, options SnapshotterOptions) (*Snapsh
 	return snapshotter, nil
 }
 
-func createSnapshotter(ctx context.Context, config SnapshotterConfig) (*Snapshotter, error) {
+func createSnapshotter(config SnapshotterConfig) (*Snapshotter, error) {
 	snapshotter := &Snapshotter{}
 
-	err := snapshotter.reconfigure(ctx, config)
+	err := snapshotter.reconfigure(config)
 	return snapshotter, err
 }
 
-func (s *Snapshotter) reconfigure(ctx context.Context, config SnapshotterConfig) error {
-	client, err := vault.CreateVaultClient(config.Vault)
+func (s *Snapshotter) reconfigure(config SnapshotterConfig) error {
+	client, err := vault.CreateClient(config.Vault)
 	if err != nil {
 		return err
 	}
 
-	uploaders, err := upload.CreateUploaders(ctx, config.Uploaders)
+	uploaders, err := upload.CreateUploaders(config.Uploaders)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,13 @@ func (s *Snapshotter) TakeSnapshot(ctx context.Context) (*time.Timer, error) {
 		return s.snapshotTimer, err
 	}
 
-	defer os.Remove(snapshot.Name())
+	defer func() {
+		if err := snapshot.Close(); err != nil {
+			fmt.Printf("could not close snapshot-temp-file %s: %s\n", snapshot.Name(), err)
+		} else if err := os.Remove(snapshot.Name()); err != nil {
+			fmt.Printf("could not remove snapshot-temp-file %s: %s\n", snapshot.Name(), err)
+		}
+	}()
 
 	ctx, cancel := context.WithTimeout(ctx, s.config.Timeout)
 	defer cancel()

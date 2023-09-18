@@ -1,8 +1,6 @@
 package auth
 
-import (
-	"github.com/hashicorp/vault/api/auth/azure"
-)
+import "github.com/hashicorp/vault/api/auth/azure"
 
 type AzureAuthConfig struct {
 	Path     string `default:"azure"`
@@ -11,17 +9,17 @@ type AzureAuthConfig struct {
 	Empty    bool
 }
 
-func createAzureAuth(config AzureAuthConfig) (authMethod, error) {
-	var loginOpts = []azure.LoginOption{azure.WithMountPath(config.Path)}
+func createAzureAuth(config AzureAuthConfig) vaultAuthMethod[AzureAuthConfig, *azure.AzureAuth] {
+	return vaultAuthMethod[AzureAuthConfig, *azure.AzureAuth]{
+		config,
+		func(config AzureAuthConfig) (*azure.AzureAuth, error) {
+			var loginOpts = []azure.LoginOption{azure.WithMountPath(config.Path)}
 
-	if config.Resource != "" {
-		loginOpts = append(loginOpts, azure.WithResource(config.Resource))
+			if config.Resource != "" {
+				loginOpts = append(loginOpts, azure.WithResource(config.Resource))
+			}
+
+			return azure.NewAzureAuth(config.Role, loginOpts...)
+		},
 	}
-
-	auth, err := azure.NewAzureAuth(config.Role, loginOpts...)
-	if err != nil {
-		return authMethod{}, err
-	}
-
-	return authMethod{auth}, nil
 }

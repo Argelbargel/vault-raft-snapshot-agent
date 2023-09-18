@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/vault/api/auth/approle"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,14 +15,14 @@ func TestCreateAppRoleAuth(t *testing.T) {
 	}
 
 	expectedAuthMethod, err := approle.NewAppRoleAuth(
-		config.RoleId,
-		&approle.SecretID{FromString: config.SecretId},
+		config.RoleId.String(),
+		&approle.SecretID{FromString: config.SecretId.String()},
 		approle.WithMountPath(config.Path),
 	)
 	assert.NoError(t, err, "NewAppRoleAuth failed unexpectedly")
 
-	auth, err := createAppRoleAuth(config)
-	assert.NoError(t, err, "createAppRoleAuth failed unexpectedly")
+	method, err := createAppRoleAuth(config).createAuthMethod()
+	assert.NoError(t, err, "createAuthMethod failed unexpectedly")
 
-	assert.Equal(t, expectedAuthMethod, auth.delegate)
+	assert.Equal(t, expectedAuthMethod, method)
 }

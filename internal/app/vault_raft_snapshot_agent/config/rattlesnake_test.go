@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"os"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/secret"
 	"path/filepath"
 	"testing"
 
@@ -11,60 +11,82 @@ import (
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/test"
 )
 
-type rattlesnakeConfigStub struct {
-	Path string `default:"/test/file" resolve-path:""`
-	Url	 string `validate:"omitempty,http_url"`
-}
-
-func TestUnmarshalResolvesRelativePaths(t *testing.T) {
+func TestUnmarshalResolvesRelativePathsInSecrets(t *testing.T) {
 	rattlesnake := newRattlesnake("test", "TEST")
 
-	wd, err := os.Getwd()
-	assert.NoError(t, err, "Getwd failed unexpectedly")
+	config := struct {
+		File secret.Secret
+	}{
+		File: "file://./file.ext",
+	}
 
-	err = rattlesnake.SetConfigFile(fmt.Sprintf("%s/config.yml", wd))
+	baseDir := t.TempDir()
+	err := rattlesnake.SetConfigFile(fmt.Sprintf("%s/config.yml", baseDir))
 	assert.NoError(t, err, "SetConfigFile failed unexpectedly")
 
-	t.Setenv("TEST_PATH", "./file.ext")
-	config := rattlesnakeConfigStub{}
 	err = rattlesnake.Unmarshal(&config)
-
 	assert.NoError(t, err, "Unmarshal failed unexpectedly")
-	assert.Equal(t, filepath.Clean(fmt.Sprintf("%s/file.ext", wd)), config.Path)
+	assert.Equal(t, secret.FromFile(filepath.Clean(fmt.Sprintf("%s/file.ext", baseDir))), config.File)
 }
 
 func TestUnmarshalSetsDefaultValues(t *testing.T) {
 	rattlesnake := newRattlesnake("test", "TEST")
 
-	config := rattlesnakeConfigStub{}
+	var config struct {
+		Default string `default:"default-value"`
+	}
+
 	err := rattlesnake.Unmarshal(&config)
 
 	assert.NoError(t, err, "Unmarshal failed unexpectedly")
-	assert.Equal(t, "/test/file", config.Path)
+	assert.Equal(t, "default-value", config.Default)
 }
 
 func TestUnmarshalValidatesValues(t *testing.T) {
 	rattlesnake := newRattlesnake("test", "TEST")
 
-	t.Setenv("TEST_URL", "not_an_url")
-	config := rattlesnakeConfigStub{}
+	config := struct {
+		Url string `validate:"http_url"`
+	}{
+		Url: "invalid-url",
+	}
+
 	err := rattlesnake.Unmarshal(&config)
 
 	assert.Error(t, err, "Unmarshal should fail on validation error")
-	assert.Equal(t, "not_an_url", config.Url)
+	assert.Equal(t, "invalid-url", config.Url)
+}
+
+func TestUnmarshalValidatesSecrets(t *testing.T) {
+	rattlesnake := newRattlesnake("test", "TEST")
+
+	config := struct {
+		Secret secret.Secret `validate:"required"`
+	}{
+		Secret: secret.FromFile("./missing/file"),
+	}
+
+	err := rattlesnake.Unmarshal(&config)
+
+	assert.Error(t, err, "Unmarshal should fail on validation error")
 }
 
 func TestOnConfigChangeRunsHandler(t *testing.T) {
 	rattlesnake := newRattlesnake("test", "TEST")
+
 	configFile := fmt.Sprintf("%s/config.yml", t.TempDir())
 
-	err := rattlesnake.SetConfigFile(configFile)
-	assert.NoError(t, err, "SetConfigFile failed unexpectedly")
-
-	err = test.WriteFile(t, configFile, "{\"url\": \"http://example.com\"}")
+	err := test.WriteFile(t, configFile, "{\"value\": \"\"}")
 	assert.NoError(t, err, "writing config file failed unexpectedly")
 
-	err = rattlesnake.Unmarshal(&rattlesnakeConfigStub{})
+	err = rattlesnake.SetConfigFile(configFile)
+	assert.NoError(t, err, "SetConfigFile failed unexpectedly")
+
+	var config struct {
+		Value string
+	}
+
+	err = rattlesnake.Unmarshal(&config)
 	assert.NoError(t, err, "Unmarshal failed unexpectedly")
 
 	changed := make(chan bool, 1)
@@ -72,7 +94,7 @@ func TestOnConfigChangeRunsHandler(t *testing.T) {
 		changed <- true
 	})
 
-	err = test.WriteFile(t, configFile, "{\"url\": \"http://new.com\"}")
+	err = test.WriteFile(t, configFile, "{\"value\": \"new\"}")
 	assert.NoError(t, err, "writing config file failed unexpectedly")
 
 	assert.True(t, <-changed)

@@ -1,9 +1,10 @@
 package auth
 
 import (
-	"errors"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/secret"
 	"testing"
 	"time"
 
@@ -15,11 +16,11 @@ func TestCreateTokenAuth(t *testing.T) {
 	expectedToken := "test"
 	authApiStub := tokenVaultAuthApiStub{}
 
-	auth := createTokenAuth(expectedToken)
+	auth := createTokenAuth(secret.FromString(expectedToken))
 
 	_, err := auth.login(&authApiStub)
 
-	assert.NoError(t, err, "token-auth failed unexpectedly")
+	assert.NoError(t, err, "token-VaultAuth failed unexpectedly")
 	assert.Equal(t, expectedToken, authApiStub.token)
 }
 
@@ -29,7 +30,7 @@ func TestTokenAuthFailsIfLoginFails(t *testing.T) {
 
 	_, err := auth.login(&authApiStub)
 
-	assert.Error(t, err, "token-auth did not report error although login failed!")
+	assert.Error(t, err, "token-VaultAuth did not report error although login failed!")
 }
 
 func TestTokenAuthReturnsExpirationBasedOnLoginLeaseDuration(t *testing.T) {
@@ -39,7 +40,7 @@ func TestTokenAuthReturnsExpirationBasedOnLoginLeaseDuration(t *testing.T) {
 
 	leaseDuration, err := auth.login(&authApiStub)
 
-	assert.NoErrorf(t, err, "token-auth failed unexpectedly")
+	assert.NoErrorf(t, err, "token-VaultAuth failed unexpectedly")
 
 	expectedDuration := time.Duration(authApiStub.leaseDuration)
 	assert.Equal(t, expectedDuration, leaseDuration, time.Millisecond)

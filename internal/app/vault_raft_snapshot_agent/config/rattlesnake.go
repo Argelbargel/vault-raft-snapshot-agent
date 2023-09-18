@@ -1,8 +1,11 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/secret"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/creasty/defaults"
@@ -77,12 +80,12 @@ func (r rattlesnake) Unmarshal(config interface{}) error {
 		return fmt.Errorf("could not set configuration's default-values: %s", err)
 	}
 
-	pathResolver := newPathResolver(filepath.Dir(r.ConfigFileUsed()))
-	if err := pathResolver.Resolve(config); err != nil {
+	if err := secret.ResolveFilePaths(config, filepath.Dir(r.ConfigFileUsed())); err != nil {
 		return fmt.Errorf("could not resolve relative paths in configuration: %s", err)
 	}
 
 	validate := validator.New()
+	validate.RegisterCustomTypeFunc(validateSecret, secret.Zero)
 	if err := validate.Struct(config); err != nil {
 		return err
 	}
@@ -98,8 +101,22 @@ func (r rattlesnake) OnConfigChange(run func()) {
 }
 
 func (r rattlesnake) IsConfigurationNotFoundError(err error) bool {
-	_, notfound := err.(viper.ConfigFileNotFoundError)
+	var configFileNotFoundError viper.ConfigFileNotFoundError
+	notfound := errors.As(err, &configFileNotFoundError)
 	return notfound
+}
+
+func validateSecret(field reflect.Value) interface{} {
+	s, ok := field.Interface().(secret.Secret)
+	if !ok {
+		return nil
+	}
+
+	v, err := s.Resolve(false)
+	if err != nil {
+		v = ""
+	}
+	return v
 }
 
 // implements automatic unmarshalling from environment variables

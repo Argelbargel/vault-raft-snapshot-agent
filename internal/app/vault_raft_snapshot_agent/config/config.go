@@ -20,11 +20,7 @@ func NewParser[T Configuration](envPrefix string, configFilename string, configS
 // ReadConfig reads the configuration file
 func (p Parser[T]) ReadConfig(config T, file string) error {
 	err := p.delegate.BindAllEnv(
-		map[string]string{
-			"vault.url":                        "VAULT_ADDR",
-			"uploaders.aws.credentials.key":    "AWS_ACCESS_KEY_ID",
-			"uploaders.aws.credentials.secret": "AWS_SECRET_ACCESS_KEY",
-		},
+		map[string]string{"vault.url": "VAULT_ADDR"},
 	)
 	if err != nil {
 		return fmt.Errorf("could not bind environment-variables: %s", err)

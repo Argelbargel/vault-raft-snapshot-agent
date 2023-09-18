@@ -16,7 +16,8 @@ import (
 )
 
 func TestLocalDestination(t *testing.T) {
-	impl := localUploaderImpl{"/test"}
+	config := LocalUploaderConfig{Path: "/test"}
+	impl := createLocalUploader(config)
 
 	assert.Equal(t, "local path /test", impl.Destination())
 }
@@ -24,7 +25,7 @@ func TestLocalDestination(t *testing.T) {
 func TestLocalUploadSnapshotFailsIfFileCannotBeCreated(t *testing.T) {
 	impl := localUploaderImpl{"./does/not/exist"}
 
-	err := impl.uploadSnapshot(context.Background(), "test", &bytes.Buffer{})
+	err := impl.uploadSnapshot(context.Background(), nil, "test", &bytes.Buffer{})
 
 	assert.Error(t, err, "uploadSnapshot() should fail if file could not be created!")
 }
@@ -33,7 +34,7 @@ func TestLocalUploadeSnapshotCreatesFile(t *testing.T) {
 	impl := localUploaderImpl{t.TempDir()}
 	snapshotData := []byte("test")
 
-	err := impl.uploadSnapshot(context.Background(), "test.snap", bytes.NewReader(snapshotData))
+	err := impl.uploadSnapshot(context.Background(), nil, "test.snap", bytes.NewReader(snapshotData))
 
 	assert.NoError(t, err, "uploadSnapshot() failed unexpectedly!")
 
@@ -51,13 +52,13 @@ func TestLocalDeleteSnapshot(t *testing.T) {
 		_ = os.RemoveAll(filepath.Dir(impl.path))
 	}()
 
-	err := impl.uploadSnapshot(context.Background(), "test.snap", bytes.NewReader(snapshotData))
+	err := impl.uploadSnapshot(context.Background(), nil, "test.snap", bytes.NewReader(snapshotData))
 	assert.NoError(t, err, "uploadSnapshot() failed unexpectedly!")
 
 	info, err := os.Stat(fmt.Sprintf("%s/test.snap", impl.path))
 	assert.NoError(t, err, "could not get info for snapshot: %v", err)
 
-	err = impl.deleteSnapshot(context.Background(), info)
+	err = impl.deleteSnapshot(context.Background(), nil, info)
 	assert.NoError(t, err, "deleteSnapshot() failed unexpectedly!")
 
 	_, err = os.Stat(fmt.Sprintf("%s/test.snap", impl.path))
@@ -68,12 +69,12 @@ func TestLocalDeleteSnapshot(t *testing.T) {
 func TestLocalListSnapshots(t *testing.T) {
 	impl := localUploaderImpl{t.TempDir()}
 
-	var expectedSnaphotNames[]string
+	var expectedSnaphotNames []string
 	for i := 0; i < 3; i++ {
 		expectedSnaphotNames = append(expectedSnaphotNames, createEmptySnapshot(t, impl.path, "test", ".snap").Name())
 	}
 
-	listedSnapshots, err := impl.listSnapshots(context.Background(), "test", ".snap")
+	listedSnapshots, err := impl.listSnapshots(context.Background(), nil, "test", ".snap")
 	listedSnapshotNames := funk.Map(listedSnapshots, func(s os.FileInfo) string { return s.Name() })
 
 	assert.NoError(t, err)
