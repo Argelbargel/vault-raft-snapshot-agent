@@ -109,7 +109,7 @@ the snapshot-frequency and `VRSA_VAULT_AUTH_TOKEN=<value>` configures the token 
 
 For setting the address of the vault-server you can use `VAULT_ADDR` to configure (same as `vault.url`).
 
-Other than the [external-property sources](#secrets-and-external-property-sources), these environment variables are read once 
+Other than the [external property sources](#secrets-and-external-property-sources), these environment variables are read once 
 at startup only and the configuration will not be reloaded when their values change.
 
 _Options specified via environment-variables take precedence before the values specified in the configuration file - even those specified as secrets!_
