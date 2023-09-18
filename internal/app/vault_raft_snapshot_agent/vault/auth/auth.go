@@ -54,12 +54,12 @@ func CreateVaultAuth(config VaultAuthConfig) (VaultAuth[*api.Client], error) {
 func (am vaultAuthMethod[C, M]) Login(ctx context.Context, client *api.Client) (time.Duration, error) {
 	method, err := am.methodFactory(am.config)
 	if err != nil {
-		return time.Duration(0), err
+		return 0, err
 	}
 
 	authSecret, err := method.Login(ctx, client)
 	if err != nil {
-		return time.Duration(0), err
+		return 0, err
 	}
 
 	return time.Duration(authSecret.LeaseDuration), nil
