@@ -1,9 +1,0 @@
-vault:
-  auth:
-    approle:
-      role: "test"
-snapshots:
-  frequency: "1h"
-uploaders:
-  local:
-    path: .

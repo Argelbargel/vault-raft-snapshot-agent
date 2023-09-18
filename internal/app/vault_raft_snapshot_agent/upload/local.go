@@ -3,6 +3,7 @@ package upload
 import (
 	"context"
 	"fmt"
+	"go.uber.org/multierr"
 	"io"
 	"os"
 	"strings"
@@ -17,19 +18,28 @@ type localUploaderImpl struct {
 	path string
 }
 
-func createLocalUploader(ctx context.Context, config LocalUploaderConfig) (uploader[os.FileInfo], error) {
-	return uploader[os.FileInfo]{
+func createLocalUploader(config LocalUploaderConfig) uploader[LocalUploaderConfig, any, os.FileInfo] {
+	return uploader[LocalUploaderConfig, any, os.FileInfo]{
+		config,
 		localUploaderImpl{
 			path: config.Path,
 		},
-	}, nil
+	}
 }
 
-func (u localUploaderImpl) Destination() string {
-	return fmt.Sprintf("local path %s", u.path)
+// nolint:unused
+// implements interface uploaderImpl
+func (u localUploaderImpl) destination(config LocalUploaderConfig) string {
+	return fmt.Sprintf("local path %s", config.Path)
 }
 
-func (u localUploaderImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
+// nolint:unused
+// implements interface uploaderImpl
+func (u localUploaderImpl) connect(_ context.Context, _ LocalUploaderConfig) (any, error) {
+	return nil, nil
+}
+
+func (u localUploaderImpl) uploadSnapshot(_ context.Context, _ any, name string, data io.Reader) error {
 	fileName := fmt.Sprintf("%s/%s", u.path, name)
 
 	file, err := os.Create(fileName)
@@ -37,18 +47,12 @@ func (u localUploaderImpl) uploadSnapshot(ctx context.Context, name string, data
 		return err
 	}
 
-	defer func() {
-		_ = file.Close()
-	}()
+	_, err = io.Copy(file, data)
 
-	if _, err = io.Copy(file, data); err != nil {
-		return err
-	}
-
-	return nil
+	return multierr.Append(err, file.Close())
 }
 
-func (u localUploaderImpl) deleteSnapshot(ctx context.Context, snapshot os.FileInfo) error {
+func (u localUploaderImpl) deleteSnapshot(_ context.Context, _ any, snapshot os.FileInfo) error {
 	if err := os.Remove(fmt.Sprintf("%s/%s", u.path, snapshot.Name())); err != nil {
 		return err
 	}
@@ -56,7 +60,7 @@ func (u localUploaderImpl) deleteSnapshot(ctx context.Context, snapshot os.FileI
 	return nil
 }
 
-func (u localUploaderImpl) listSnapshots(ctx context.Context, prefix string, ext string) ([]os.FileInfo, error) {
+func (u localUploaderImpl) listSnapshots(_ context.Context, _ any, prefix string, ext string) ([]os.FileInfo, error) {
 	var snapshots []os.FileInfo
 
 	files, err := os.ReadDir(u.path)

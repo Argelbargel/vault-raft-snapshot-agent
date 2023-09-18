@@ -24,7 +24,7 @@ vault:
     kubernetes:
       role: "test-kubernetes-role"
       path: "test-kubernetes-path"
-      jwtPath: "./jwt"
+      jwtToken: "file://./jwt"
     ldap:
       username: "test-ldap-user"
       password: "test-ldap-pass"
@@ -43,15 +43,15 @@ snapshots:
   timestampFormat: "2006-01-02"
 uploaders:
   aws:
+    accessKeyId: test-key
+    accessKey: test-secret
+    sessionToken: test-session
     region: test-region
     bucket: test-bucket
     keyPrefix: test-prefix
     endpoint: test-endpoint
     useServerSideEncryption: true
     forcePathStyle: true
-    credentials:
-      key: test-key
-      secret: test-secret
   azure:
     accountName: test-account
     accountKey: test-key
@@ -65,8 +65,8 @@ uploaders:
     container: test-container
     username: test-username
     apiKey: test-api-key
-    authUrl: http://auth.com
-    domain: http://user.com
+    authUrl: https://auth.com
+    domain: https://user.com
     region: test-region
     tenantId: test-tenant
     timeout: 180s

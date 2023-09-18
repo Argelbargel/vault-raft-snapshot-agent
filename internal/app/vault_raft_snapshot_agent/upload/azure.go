@@ -3,6 +3,7 @@ package upload
 import (
 	"context"
 	"fmt"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/secret"
 	"io"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
@@ -10,51 +11,60 @@ import (
 )
 
 type AzureUploaderConfig struct {
-	AccountName   string `validate:"required_if=Empty false"`
-	AccountKey    string `validate:"required_if=Empty false"`
-	ContainerName string `mapstructure:"container" validate:"required_if=Empty false"`
-	CloudDomain   string `default:"blob.core.windows.net" validate:"required_if=Empty false"`
-	Empty         bool
+	AccountName secret.Secret `default:"env://AZURE_STORAGE_ACCOUNT" validate:"required_if=Empty false"`
+	AccountKey  secret.Secret `default:"env://AZURE_STORAGE_KEY" validate:"required_if=Empty false"`
+	Container   string        `validate:"required_if=Empty false"`
+	CloudDomain string        `default:"blob.core.windows.net" validate:"required_if=Empty false"`
+	Empty       bool
 }
 
 type azureUploaderImpl struct {
-	client    *azblob.Client
 	container string
 }
 
-func createAzureUploader(ctx context.Context, config AzureUploaderConfig) (*uploader[*container.BlobItem], error) {
-	credential, err := azblob.NewSharedKeyCredential(config.AccountName, config.AccountKey)
+func createAzureUploader(config AzureUploaderConfig) uploader[AzureUploaderConfig, *azblob.Client, *container.BlobItem] {
+	return uploader[AzureUploaderConfig, *azblob.Client, *container.BlobItem]{
+		config, azureUploaderImpl{config.Container},
+	}
+}
+
+// nolint:unused
+// implements interface uploaderImpl
+func (u azureUploaderImpl) destination(config AzureUploaderConfig) string {
+	return fmt.Sprintf("azure container %s at %s", config.Container, config.CloudDomain)
+}
+
+// nolint:unused
+// implements interface uploaderImpl
+func (u azureUploaderImpl) connect(_ context.Context, config AzureUploaderConfig) (*azblob.Client, error) {
+	accountName, err := config.AccountName.Resolve(true)
+	if err != nil {
+		return nil, err
+	}
+
+	accountKey, err := config.AccountName.Resolve(true)
+	if err != nil {
+		return nil, err
+	}
+
+	credential, err := azblob.NewSharedKeyCredential(accountName, accountKey)
 	if err != nil {
 		return nil, fmt.Errorf("invalid credentials for azure: %w", err)
 	}
 
 	serviceURL := fmt.Sprintf("https://%s.%s/", config.AccountName, config.CloudDomain)
-	client, err := azblob.NewClientWithSharedKeyCredential(serviceURL, credential, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create azure client: %w", err)
-	}
-
-	return &uploader[*container.BlobItem]{
-		azureUploaderImpl{
-			client:    client,
-			container: config.ContainerName,
-		},
-	}, nil
-}
-
-func (u azureUploaderImpl) Destination() string {
-	return fmt.Sprintf("azure container %s", u.container)
+	return azblob.NewClientWithSharedKeyCredential(serviceURL, credential, nil)
 }
 
 // nolint:unused
 // implements interface uploaderImpl
-func (u azureUploaderImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
+func (u azureUploaderImpl) uploadSnapshot(ctx context.Context, client *azblob.Client, name string, data io.Reader) error {
 	uploadOptions := &azblob.UploadStreamOptions{
 		BlockSize:   4 * 1024 * 1024,
 		Concurrency: 16,
 	}
 
-	if _, err := u.client.UploadStream(ctx, u.container, name, data, uploadOptions); err != nil {
+	if _, err := client.UploadStream(ctx, u.container, name, data, uploadOptions); err != nil {
 		return err
 	}
 
@@ -63,8 +73,8 @@ func (u azureUploaderImpl) uploadSnapshot(ctx context.Context, name string, data
 
 // nolint:unused
 // implements interface uploaderImpl
-func (u azureUploaderImpl) deleteSnapshot(ctx context.Context, snapshot *container.BlobItem) error {
-	if _, err := u.client.DeleteBlob(ctx, u.container, *snapshot.Name, nil); err != nil {
+func (u azureUploaderImpl) deleteSnapshot(ctx context.Context, client *azblob.Client, snapshot *container.BlobItem) error {
+	if _, err := client.DeleteBlob(ctx, u.container, *snapshot.Name, nil); err != nil {
 		return err
 	}
 
@@ -73,12 +83,12 @@ func (u azureUploaderImpl) deleteSnapshot(ctx context.Context, snapshot *contain
 
 // nolint:unused
 // implements interface uploaderImpl
-func (u azureUploaderImpl) listSnapshots(ctx context.Context, prefix string, ext string) ([]*container.BlobItem, error) {
+func (u azureUploaderImpl) listSnapshots(ctx context.Context, client *azblob.Client, prefix string, _ string) ([]*container.BlobItem, error) {
 	var results []*container.BlobItem
 
 	var maxResults int32 = 500
 
-	pager := u.client.NewListBlobsFlatPager(u.container, &azblob.ListBlobsFlatOptions{
+	pager := client.NewListBlobsFlatPager(u.container, &azblob.ListBlobsFlatOptions{
 		Prefix:     &prefix,
 		MaxResults: &maxResults,
 	})

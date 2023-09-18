@@ -3,12 +3,13 @@ package auth
 import (
 	"context"
 	"fmt"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/secret"
 	"time"
 
 	"github.com/hashicorp/vault/api"
 )
 
-type AuthConfig struct {
+type VaultAuthConfig struct {
 	AppRole    AppRoleAuthConfig    `default:"{\"Empty\": true}"`
 	AWS        AWSAuthConfig        `default:"{\"Empty\": true}"`
 	Azure      AzureAuthConfig      `default:"{\"Empty\": true}"`
@@ -16,32 +17,33 @@ type AuthConfig struct {
 	Kubernetes KubernetesAuthConfig `default:"{\"Empty\": true}"`
 	LDAP       LDAPAuthConfig       `default:"{\"Empty\": true}"`
 	UserPass   UserPassAuthConfig   `default:"{\"Empty\": true}"`
-	Token      string
+	Token      secret.Secret
 }
 
-type auth[C any] interface {
+type VaultAuth[C any] interface {
 	Login(ctx context.Context, client C) (time.Duration, error)
 }
 
-type authMethod struct {
-	delegate api.AuthMethod
+type vaultAuthMethod[C any, M api.AuthMethod] struct {
+	config        C
+	methodFactory func(config C) (M, error)
 }
 
-func CreateVaultAuth(config AuthConfig) (auth[*api.Client], error) {
+func CreateVaultAuth(config VaultAuthConfig) (VaultAuth[*api.Client], error) {
 	if !config.AppRole.Empty {
-		return createAppRoleAuth(config.AppRole)
+		return createAppRoleAuth(config.AppRole), nil
 	} else if !config.AWS.Empty {
-		return createAWSAuth(config.AWS)
+		return createAWSAuth(config.AWS), nil
 	} else if !config.Azure.Empty {
-		return createAzureAuth(config.Azure)
+		return createAzureAuth(config.Azure), nil
 	} else if !config.GCP.Empty {
-		return createGCPAuth(config.GCP)
+		return createGCPAuth(config.GCP), nil
 	} else if !config.Kubernetes.Empty {
-		return createKubernetesAuth(config.Kubernetes)
+		return createKubernetesAuth(config.Kubernetes), nil
 	} else if !config.LDAP.Empty {
-		return createLDAPAuth(config.LDAP)
+		return createLDAPAuth(config.LDAP), nil
 	} else if !config.UserPass.Empty {
-		return createUserPassAuth(config.UserPass)
+		return createUserPassAuth(config.UserPass), nil
 	} else if config.Token != "" {
 		return createTokenAuth(config.Token), nil
 	} else {
@@ -49,11 +51,20 @@ func CreateVaultAuth(config AuthConfig) (auth[*api.Client], error) {
 	}
 }
 
-func (wrapper authMethod) Login(ctx context.Context, client *api.Client) (time.Duration, error) {
-	secret, err := wrapper.delegate.Login(ctx, client)
+func (am vaultAuthMethod[C, M]) Login(ctx context.Context, client *api.Client) (time.Duration, error) {
+	method, err := am.methodFactory(am.config)
 	if err != nil {
 		return time.Duration(0), err
 	}
 
-	return time.Duration(secret.LeaseDuration), nil
+	authSecret, err := method.Login(ctx, client)
+	if err != nil {
+		return time.Duration(0), err
+	}
+
+	return time.Duration(authSecret.LeaseDuration), nil
+}
+
+func (am vaultAuthMethod[C, M]) createAuthMethod() (M, error) {
+	return am.methodFactory(am.config)
 }

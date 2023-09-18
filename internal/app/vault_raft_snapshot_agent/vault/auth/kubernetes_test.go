@@ -2,21 +2,19 @@ package auth
 
 import (
 	"fmt"
-	"testing"
-
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/secret"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/test"
-
 	"github.com/hashicorp/vault/api/auth/kubernetes"
-
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestCreateKubernetesAuth(t *testing.T) {
 	jwtPath := fmt.Sprintf("%s/jwt", t.TempDir())
 	config := KubernetesAuthConfig{
-		Role:    "test-role",
-		JWTPath: jwtPath,
-		Path:    "test-path",
+		Role:     "test-role",
+		JWTToken: secret.Secret(fmt.Sprintf("file://%s", jwtPath)),
+		Path:     "test-path",
 	}
 
 	err := test.WriteFile(t, jwtPath, "test")
@@ -25,12 +23,12 @@ func TestCreateKubernetesAuth(t *testing.T) {
 	expectedAuthMethod, err := kubernetes.NewKubernetesAuth(
 		config.Role,
 		kubernetes.WithMountPath(config.Path),
-		kubernetes.WithServiceAccountTokenPath(config.JWTPath),
+		kubernetes.WithServiceAccountToken("test"),
 	)
 	assert.NoError(t, err, "NewKubernetesAuth failed unexpectedly")
 
-	auth, err := createKubernetesAuth(config)
+	authMethod, err := createKubernetesAuth(config).createAuthMethod()
 	assert.NoError(t, err, "createKubernetesAuth failed unexpectedly")
 
-	assert.Equal(t, expectedAuthMethod, auth.delegate)
+	assert.Equal(t, expectedAuthMethod, authMethod)
 }

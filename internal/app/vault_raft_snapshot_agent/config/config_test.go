@@ -34,18 +34,13 @@ func TestReadConfigBindsEnvVariables(t *testing.T) {
 	parser := NewParser[*configDataStub]("TEST", "")
 
 	t.Setenv("VAULT_ADDR", "http://from.env:8200")
-	t.Setenv("AWS_ACCESS_KEY_ID", "env-key")
-	t.Setenv("AWS_SECRET_ACCESS_KEY", "env-secret")
 	t.Setenv("TEST_VAULT_TEST", "test")
-
 
 	data := configDataStub{hasUploaders: true}
 	err := parser.ReadConfig(&data, "")
 	assert.NoError(t, err, "ReadConfig failed unexpectedly")
 
 	assert.Equal(t, os.Getenv("VAULT_ADDR"), data.Vault.Url, "ReadConfig did not bind env-var VAULT_ADDR")
-	assert.Equal(t, os.Getenv("AWS_ACCESS_KEY_ID"), data.Uploaders.AWS.Credentials.Key, "ReadConfig did not bind env-var AWS_ACCESS_KEY_ID")
-	assert.Equal(t, os.Getenv("AWS_SECRET_ACCESS_KEY"), data.Uploaders.AWS.Credentials.Secret, "ReadConfig did not bind env-var SECRET_ACCESS_KEY")
 	assert.Equal(t, os.Getenv("TEST_VAULT_TEST"), data.Vault.Test, "ReadConfig did not bind env-var TEST_VAULT_TEST")
 }
 

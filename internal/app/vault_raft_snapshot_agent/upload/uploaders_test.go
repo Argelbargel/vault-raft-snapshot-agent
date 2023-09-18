@@ -13,7 +13,7 @@ import (
 
 func TestUploaderUpload(t *testing.T) {
 	implStub := uploaderImplStub{}
-	uploader := uploader[int]{&implStub}
+	uploader := uploader[string, any, int]{"test", &implStub}
 	snapshotData := []byte("test")
 
 	ctx := context.Background()
@@ -27,7 +27,7 @@ func TestUploaderUpload(t *testing.T) {
 
 func TestUploaderDeletesSnapshotsIfRetainIsSet(t *testing.T) {
 	implStub := uploaderImplStub{snapshots: []int{3, 1, 4, 2}}
-	uploader := uploader[int]{&implStub}
+	uploader := uploader[string, any, int]{"test", &implStub}
 
 	err := uploader.Upload(context.Background(), &bytes.Buffer{}, "", "", "", 2)
 
@@ -37,7 +37,7 @@ func TestUploaderDeletesSnapshotsIfRetainIsSet(t *testing.T) {
 
 func TestUploaderUploadFailsIfImplUploadFails(t *testing.T) {
 	implStub := uploaderImplStub{snapshots: []int{3, 1}, uploadFails: true}
-	uploader := uploader[int]{&implStub}
+	uploader := uploader[string, any, int]{"test", &implStub}
 
 	err := uploader.Upload(context.Background(), &bytes.Buffer{}, "", "", "", 1)
 
@@ -47,9 +47,21 @@ func TestUploaderUploadFailsIfImplUploadFails(t *testing.T) {
 	assert.False(t, implStub.deleted)
 }
 
+func TestUploaderUploadFailsIfImplConnectFails(t *testing.T) {
+	implStub := uploaderImplStub{snapshots: []int{3, 1}, connectFails: true}
+	uploader := uploader[string, any, int]{"test", &implStub}
+
+	err := uploader.Upload(context.Background(), &bytes.Buffer{}, "", "", "", 1)
+
+	assert.Error(t, err, "Upload did not fail although implementation failed")
+	assert.False(t, implStub.uploaded)
+	assert.False(t, implStub.listed)
+	assert.False(t, implStub.deleted)
+}
+
 func TestUploaderUploadFailsIfImplListFails(t *testing.T) {
 	implStub := uploaderImplStub{snapshots: []int{3, 1}, listFails: true}
-	uploader := uploader[int]{&implStub}
+	uploader := uploader[string, any, int]{"test", &implStub}
 
 	err := uploader.Upload(context.Background(), &bytes.Buffer{}, "", "", "", 1)
 
@@ -61,7 +73,7 @@ func TestUploaderUploadFailsIfImplListFails(t *testing.T) {
 
 func TestUploaderUploadFailsIfImplDeleteFails(t *testing.T) {
 	implStub := uploaderImplStub{snapshots: []int{3, 1}, deleteFails: true}
-	uploader := uploader[int]{&implStub}
+	uploader := uploader[string, any, int]{"test", &implStub}
 
 	err := uploader.Upload(context.Background(), &bytes.Buffer{}, "", "", "", 1)
 
@@ -72,35 +84,51 @@ func TestUploaderUploadFailsIfImplDeleteFails(t *testing.T) {
 }
 
 type uploaderImplStub struct {
-	uploadFails bool
-	deleteFails bool
-	listFails   bool
-	uploaded    bool
-	listed      bool
-	deleted     bool
-	snapshots   []int
-	uploadCtx   context.Context
-	uploadName  string
-	uploadData  []byte
+	connectFails bool
+	uploadFails  bool
+	deleteFails  bool
+	listFails    bool
+	uploaded     bool
+	listed       bool
+	deleted      bool
+	snapshots    []int
+	uploadCtx    context.Context
+	uploadName   string
+	uploadData   []byte
 }
 
 // nolint:unused
 // implements interface uploaderImpl
-func (stub *uploaderImplStub) uploadSnapshot(ctx context.Context, name string, reader io.Reader) error {
+func (stub *uploaderImplStub) destination(config string) string {
+	return config
+}
+
+// nolint:unused
+// implements interface uploaderImpl
+func (stub *uploaderImplStub) connect(_ context.Context, _ string) (any, error) {
+	if stub.connectFails {
+		return nil, errors.New("connect failed")
+	}
+	return nil, nil
+}
+
+// nolint:unused
+// implements interface uploaderImpl
+func (stub *uploaderImplStub) uploadSnapshot(ctx context.Context, _ any, name string, reader io.Reader) error {
 	stub.uploaded = true
 	if stub.uploadFails {
 		return errors.New("upload failed")
 	}
 	stub.uploadCtx = ctx
 	stub.uploadName = name
-	bytes, _ := io.ReadAll(reader)
-	stub.uploadData = bytes
+	data, _ := io.ReadAll(reader)
+	stub.uploadData = data
 	return nil
 }
 
 // nolint:unused
 // implements interface uploaderImpl
-func (stub *uploaderImplStub) deleteSnapshot(ctx context.Context, snapshot int) error {
+func (stub *uploaderImplStub) deleteSnapshot(_ context.Context, _ any, snapshot int) error {
 	stub.deleted = true
 	if stub.deleteFails {
 		return errors.New("delete failed")
@@ -111,7 +139,7 @@ func (stub *uploaderImplStub) deleteSnapshot(ctx context.Context, snapshot int) 
 
 // nolint:unused
 // implements interface uploaderImpl
-func (stub *uploaderImplStub) listSnapshots(ctx context.Context, prefix string, ext string) ([]int, error) {
+func (stub *uploaderImplStub) listSnapshots(_ context.Context, _ any, _ string, _ string) ([]int, error) {
 	stub.listed = true
 	if stub.listFails {
 		return []int{}, errors.New("list failed")

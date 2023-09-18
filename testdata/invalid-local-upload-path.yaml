@@ -1,5 +1,0 @@
-snapshots:
-  frequency: "1h"
-uploaders:
-  local:
-    path: ./missing

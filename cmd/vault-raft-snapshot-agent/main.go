@@ -44,7 +44,7 @@ import (
 var Version = "development"
 var Platform = "linux/amd64"
 
-var snapshotterOptions internal.SnapshotterOptions = internal.SnapshotterOptions{
+var snapshotterOptions = internal.SnapshotterOptions{
 	ConfigFileName:        "snapshots",
 	ConfigFileSearchPaths: []string{"/etc/vault.d/", "."},
 	EnvPrefix:             "VRSA",
@@ -105,14 +105,14 @@ Options:
 }
 
 func startSnapshotter(configFile cli.Path) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	snapshotterOptions.ConfigFilePath = configFile
-	snapshotter, err := internal.CreateSnapshotter(ctx, snapshotterOptions)
+	snapshotter, err := internal.CreateSnapshotter(snapshotterOptions)
 	if err != nil {
 		log.Fatalf("Cannot create snapshotter: %s\n", err)
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)

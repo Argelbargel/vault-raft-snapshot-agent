@@ -17,7 +17,7 @@ func TestClientRefreshesAuthAfterTokenExpires(t *testing.T) {
 		leaseDuration: time.Minute,
 	}
 
-	client := NewVaultClient[any, *clientVaultAPIAuthStub](
+	client := NewClient[any, *clientVaultAPIAuthStub](
 		&clientVaultAPIStub{
 			leader: true,
 		},
@@ -43,7 +43,7 @@ func TestClientDoesNotTakeSnapshotIfAuthRefreshFails(t *testing.T) {
 	}
 
 	initalAuthExpiration := time.Now().Add(time.Second * -1)
-	client := NewVaultClient[any, *clientVaultAPIAuthStub](
+	client := NewClient[any, *clientVaultAPIAuthStub](
 		clientApi,
 		authStub,
 		initalAuthExpiration,
@@ -60,7 +60,7 @@ func TestClientOnlyTakesSnaphotWhenLeader(t *testing.T) {
 	clientApi := &clientVaultAPIStub{
 		leader: false,
 	}
-	client := NewVaultClient[any, *clientVaultAPIAuthStub](
+	client := NewClient[any, *clientVaultAPIAuthStub](
 		clientApi,
 		&clientVaultAPIAuthStub{},
 		time.Now().Add(time.Minute),
@@ -90,7 +90,7 @@ func TestClientDoesNotTakeSnapshotIfLeaderCheckFails(t *testing.T) {
 		leader:         true,
 	}
 
-	client := NewVaultClient[any, *clientVaultAPIAuthStub](
+	client := NewClient[any, *clientVaultAPIAuthStub](
 		api,
 		authStub,
 		time.Now(),
@@ -103,7 +103,7 @@ func TestClientDoesNotTakeSnapshotIfLeaderCheckFails(t *testing.T) {
 	assert.NotEqual(t, authStub.leaseDuration, client.authExpiration)
 }
 
-func assertAuthRefresh(t *testing.T, refreshed bool, client *VaultClient[any, *clientVaultAPIAuthStub], auth *clientVaultAPIAuthStub) {
+func assertAuthRefresh(t *testing.T, refreshed bool, client *Client[any, *clientVaultAPIAuthStub], auth *clientVaultAPIAuthStub) {
 	t.Helper()
 
 	if auth.refreshed != refreshed {
@@ -156,7 +156,7 @@ type clientVaultAPIAuthStub struct {
 	refreshed     bool
 }
 
-func (a *clientVaultAPIAuthStub) Login(ctx context.Context, api any) (time.Duration, error) {
+func (a *clientVaultAPIAuthStub) Login(_ context.Context, _ any) (time.Duration, error) {
 	a.refreshed = true
 	var err error
 	if a.leaseDuration <= 0 {

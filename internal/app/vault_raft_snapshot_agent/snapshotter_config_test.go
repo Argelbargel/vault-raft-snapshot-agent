@@ -1,9 +1,7 @@
 package vault_raft_snapshot_agent
 
 import (
-	"errors"
-	"log"
-	"os"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/secret"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,20 +13,6 @@ import (
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/vault/auth"
 	"github.com/stretchr/testify/assert"
 )
-
-// allow overiding "default" kubernetes-jwt-path so that tests on ci do not fail
-func defaultJwtPath(def string) string {
-	jwtPath := os.Getenv("VRSA_VAULT_AUTH_KUBERNETES_JWTPATH")
-	if jwtPath != "" {
-		return jwtPath
-	}
-
-	if def != "" {
-		return def
-	}
-
-	return "/var/run/secrets/kubernetes.io/serviceaccount/token"
-}
 
 func relativeTo(configFile string, file string) string {
 	if !filepath.IsAbs(file) && !strings.HasPrefix(file, "/") {
@@ -47,11 +31,11 @@ func TestReadCompleteConfig(t *testing.T) {
 	configFile := "../../../testdata/complete.yaml"
 
 	expectedConfig := SnapshotterConfig{
-		Vault: vault.VaultClientConfig{
+		Vault: vault.ClientConfig{
 			Url:      "https://example.com:8200",
 			Insecure: true,
 			Timeout:  5 * time.Minute,
-			Auth: auth.AuthConfig{
+			Auth: auth.VaultAuthConfig{
 				AppRole: auth.AppRoleAuthConfig{
 					Path:     "test-approle-path",
 					RoleId:   "test-approle",
@@ -75,9 +59,9 @@ func TestReadCompleteConfig(t *testing.T) {
 					ServiceAccountEmail: "test@example.com",
 				},
 				Kubernetes: auth.KubernetesAuthConfig{
-					Role:    "test-kubernetes-role",
-					Path:    "test-kubernetes-path",
-					JWTPath: relativeTo(configFile, defaultJwtPath("./jwt")),
+					Role:     "test-kubernetes-role",
+					Path:     "test-kubernetes-path",
+					JWTToken: secret.FromFile(relativeTo(configFile, "./jwt")),
 				},
 				LDAP: auth.LDAPAuthConfig{
 					Path:     "test-ldap-path",
@@ -102,22 +86,21 @@ func TestReadCompleteConfig(t *testing.T) {
 		},
 		Uploaders: upload.UploadersConfig{
 			AWS: upload.AWSUploaderConfig{
+				AccessKeyId:             "test-key",
+				AccessKey:               "test-secret",
+				SessionToken:            "test-session",
 				Endpoint:                "test-endpoint",
 				Region:                  "test-region",
 				Bucket:                  "test-bucket",
 				KeyPrefix:               "test-prefix",
 				UseServerSideEncryption: true,
 				ForcePathStyle:          true,
-				Credentials: upload.AWSUploaderCredentialsConfig{
-					Key:    "test-key",
-					Secret: "test-secret",
-				},
 			},
 			Azure: upload.AzureUploaderConfig{
-				AccountName:   "test-account",
-				AccountKey:    "test-key",
-				ContainerName: "test-container",
-				CloudDomain:   "blob.core.chinacloudapi.cn",
+				AccountName: "test-account",
+				AccountKey:  "test-key",
+				Container:   "test-container",
+				CloudDomain: "blob.core.chinacloudapi.cn",
 			},
 			GCP: upload.GCPUploaderConfig{
 				Bucket: "test-bucket",
@@ -129,8 +112,8 @@ func TestReadCompleteConfig(t *testing.T) {
 				Container: "test-container",
 				UserName:  "test-username",
 				ApiKey:    "test-api-key",
-				AuthUrl:   "http://auth.com",
-				Domain:    "http://user.com",
+				AuthUrl:   "https://auth.com",
+				Domain:    "https://user.com",
 				Region:    "test-region",
 				TenantId:  "test-tenant",
 				Timeout:   180 * time.Second,
@@ -150,11 +133,11 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 	configFile := "../../../testdata/defaults.yaml"
 
 	expectedConfig := SnapshotterConfig{
-		Vault: vault.VaultClientConfig{
+		Vault: vault.ClientConfig{
 			Url:      "http://127.0.0.1:8200",
 			Insecure: false,
 			Timeout:  time.Minute,
-			Auth: auth.AuthConfig{
+			Auth: auth.VaultAuthConfig{
 				AppRole: auth.AppRoleAuthConfig{
 					Path:  "approle",
 					Empty: true,
@@ -162,6 +145,7 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 				AWS: auth.AWSAuthConfig{
 					Path:             "aws",
 					EC2SignatureType: auth.AWS_EC2_PKCS7,
+					Region:           secret.FromEnv("AWS_DEFAULT_REGION"),
 					Empty:            true,
 				},
 				Azure: auth.AzureAuthConfig{
@@ -173,9 +157,9 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 					Empty: true,
 				},
 				Kubernetes: auth.KubernetesAuthConfig{
-					Role:    "test-role",
-					Path:    "kubernetes",
-					JWTPath: relativeTo(configFile, defaultJwtPath("")),
+					Role:     "test-role",
+					Path:     "kubernetes",
+					JWTToken: secret.FromFile(relativeTo(configFile, "./jwt")),
 				},
 				LDAP: auth.LDAPAuthConfig{
 					Path:  "ldap",
@@ -197,10 +181,16 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 		},
 		Uploaders: upload.UploadersConfig{
 			AWS: upload.AWSUploaderConfig{
-				Credentials: upload.AWSUploaderCredentialsConfig{Empty: true},
-				Empty:       true,
+				AccessKeyId:  secret.FromEnv("AWS_ACCESS_KEY_ID"),
+				AccessKey:    secret.FromEnv("AWS_SECRET_ACCESS_KEY"),
+				SessionToken: secret.FromEnv("AWS_SESSION_TOKEN"),
+				Region:       secret.FromEnv("AWS_DEFAULT_REGION"),
+				Endpoint:     secret.FromEnv("AWS_ENDPOINT_URL"),
+				Empty:        true,
 			},
 			Azure: upload.AzureUploaderConfig{
+				AccountName: secret.FromEnv("AZURE_STORAGE_ACCOUNT"),
+				AccountKey:  secret.FromEnv("AZURE_STORAGE_KEY"),
 				CloudDomain: "blob.core.windows.net",
 				Empty:       true,
 			},
@@ -209,8 +199,11 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 				Path: ".",
 			},
 			Swift: upload.SwiftUploaderConfig{
-				Timeout: time.Minute,
-				Empty:       true,
+				UserName: secret.FromEnv("SWIFT_USERNAME"),
+				ApiKey:   secret.FromEnv("SWIFT_API_KEY"),
+				Region:   secret.FromEnv("SWIFT_REGION"),
+				Timeout:  time.Minute,
+				Empty:    true,
 			},
 		},
 	}
@@ -221,22 +214,4 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 
 	assert.NoError(t, err, "ReadConfig(%s) failed unexpectedly", configFile)
 	assert.Equal(t, expectedConfig, data)
-}
-
-func init() {
-	jwtPath := defaultJwtPath("")
-	if err := os.MkdirAll(filepath.Dir(jwtPath), 0777); err != nil && !errors.Is(err, os.ErrExist) {
-		log.Fatalf("could not create directorys for jwt-file %s: %v", jwtPath, err)
-	}
-
-	file, err := os.OpenFile(jwtPath, os.O_RDWR|os.O_CREATE, 0666)
-	if err != nil {
-		log.Fatalf("could not create jwt-file %s: %v", jwtPath, err)
-	}
-
-	file.Close()
-
-	if err != nil {
-		log.Fatalf("could not read jwt-file %s: %v", jwtPath, err)
-	}
 }

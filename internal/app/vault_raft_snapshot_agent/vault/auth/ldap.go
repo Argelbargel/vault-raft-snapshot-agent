@@ -1,26 +1,35 @@
 package auth
 
 import (
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/secret"
 	"github.com/hashicorp/vault/api/auth/ldap"
 )
 
 type LDAPAuthConfig struct {
-	Path     string `default:"ldap"`
-	Username string `validate:"required_if=Empty false"`
-	Password string `validate:"required_if=Empty false"`
+	Path     string        `default:"ldap"`
+	Username secret.Secret `validate:"required_if=Empty false"`
+	Password secret.Secret `validate:"required_if=Empty false"`
 	Empty    bool
 }
 
-func createLDAPAuth(config LDAPAuthConfig) (authMethod, error) {
-	auth, err := ldap.NewLDAPAuth(
-		config.Username,
-		&ldap.Password{FromString: config.Password},
-		ldap.WithMountPath(config.Path),
-	)
+func createLDAPAuth(config LDAPAuthConfig) vaultAuthMethod[LDAPAuthConfig, *ldap.LDAPAuth] {
+	return vaultAuthMethod[LDAPAuthConfig, *ldap.LDAPAuth]{
+		config,
+		func(config LDAPAuthConfig) (*ldap.LDAPAuth, error) {
+			username, err := config.Username.Resolve(true)
+			if err != nil {
+				return nil, err
+			}
+			password, err := config.Password.Resolve(true)
+			if err != nil {
+				return nil, err
+			}
 
-	if err != nil {
-		return authMethod{}, err
+			return ldap.NewLDAPAuth(
+				username,
+				&ldap.Password{FromString: password},
+				ldap.WithMountPath(config.Path),
+			)
+		},
 	}
-
-	return authMethod{auth}, nil
 }

@@ -14,33 +14,33 @@ type GCPUploaderConfig struct {
 	Empty  bool
 }
 
-type gcpUploaderImpl struct {
-	destination string
-	bucket      *storage.BucketHandle
+type gcpUploaderImpl struct{}
+
+func createGCPUploader(config GCPUploaderConfig) uploader[GCPUploaderConfig, *storage.BucketHandle, storage.ObjectAttrs] {
+	return uploader[GCPUploaderConfig, *storage.BucketHandle, storage.ObjectAttrs]{config, gcpUploaderImpl{}}
 }
 
-func createGCPUploader(ctx context.Context, config GCPUploaderConfig) (*uploader[storage.ObjectAttrs], error) {
+// nolint:unused
+// implements interface uploaderImpl
+func (u gcpUploaderImpl) destination(config GCPUploaderConfig) string {
+	return fmt.Sprintf("gcp bucket %s", config.Bucket)
+}
+
+// nolint:unused
+// implements interface uploaderImpl
+func (u gcpUploaderImpl) connect(ctx context.Context, config GCPUploaderConfig) (*storage.BucketHandle, error) {
 	client, err := storage.NewClient(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &uploader[storage.ObjectAttrs]{
-		gcpUploaderImpl{
-			destination: fmt.Sprintf("gcp bucket %s", config.Bucket),
-			bucket:      client.Bucket(config.Bucket),
-		},
-	}, nil
-}
-
-func (u gcpUploaderImpl) Destination() string {
-	return u.destination
+	return client.Bucket(config.Bucket), nil
 }
 
 // nolint:unused
 // implements interface uploaderImpl
-func (u gcpUploaderImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
-	obj := u.bucket.Object(name)
+func (u gcpUploaderImpl) uploadSnapshot(ctx context.Context, client *storage.BucketHandle, name string, data io.Reader) error {
+	obj := client.Object(name)
 	w := obj.NewWriter(ctx)
 
 	if _, err := io.Copy(w, data); err != nil {
@@ -56,8 +56,8 @@ func (u gcpUploaderImpl) uploadSnapshot(ctx context.Context, name string, data i
 
 // nolint:unused
 // implements interface uploaderImpl
-func (u gcpUploaderImpl) deleteSnapshot(ctx context.Context, snapshot storage.ObjectAttrs) error {
-	obj := u.bucket.Object(snapshot.Name)
+func (u gcpUploaderImpl) deleteSnapshot(ctx context.Context, client *storage.BucketHandle, snapshot storage.ObjectAttrs) error {
+	obj := client.Object(snapshot.Name)
 	if err := obj.Delete(ctx); err != nil {
 		return err
 	}
@@ -67,11 +67,11 @@ func (u gcpUploaderImpl) deleteSnapshot(ctx context.Context, snapshot storage.Ob
 
 // nolint:unused
 // implements interface uploaderImpl
-func (u gcpUploaderImpl) listSnapshots(ctx context.Context, prefix string, ext string) ([]storage.ObjectAttrs, error) {
+func (u gcpUploaderImpl) listSnapshots(ctx context.Context, client *storage.BucketHandle, prefix string, _ string) ([]storage.ObjectAttrs, error) {
 	var result []storage.ObjectAttrs
 
 	query := &storage.Query{Prefix: prefix}
-	it := u.bucket.Objects(ctx, query)
+	it := client.Objects(ctx, query)
 
 	for {
 		attrs, err := it.Next()

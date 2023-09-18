@@ -2,6 +2,7 @@ vault:
   auth:
     kubernetes:
       role: "test-role"
+      jwtToken: "file://./jwt"
 uploaders:
   local:
     path: .

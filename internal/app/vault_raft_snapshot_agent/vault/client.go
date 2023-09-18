@@ -10,22 +10,21 @@ import (
 	"github.com/hashicorp/vault/api"
 )
 
-type VaultClientConfig struct {
+type ClientConfig struct {
 	Url      string        `default:"http://127.0.0.1:8200" validate:"required,http_url"`
 	Timeout  time.Duration `default:"60s"`
 	Insecure bool
-	Auth     auth.AuthConfig
+	Auth     auth.VaultAuthConfig
 }
 
-// public implementation of the client communicating with vault
-// to authenticate and take snapshots
-type VaultClient[C any, A clientVaultAPIAuth[C]] struct {
+// Client is the public implementation of the client communicating with vault to authenticate and take snapshots
+type Client[C any, A clientVaultAPIAuth[C]] struct {
 	api            clientVaultAPI[C, A]
 	auth           A
 	authExpiration time.Time
 }
 
-// internal definition of vault-api used by VaultClient
+// internal definition of vault-api used by Client
 type clientVaultAPI[C any, A clientVaultAPIAuth[C]] interface {
 	Address() string
 	TakeSnapshot(ctx context.Context, writer io.Writer) error
@@ -43,28 +42,28 @@ type clientVaultAPIImpl struct {
 	client *api.Client
 }
 
-// creates a VaultClient using an api-implementation delegation to a real vault-api-client
-func CreateVaultClient(config VaultClientConfig) (*VaultClient[*api.Client, clientVaultAPIAuth[*api.Client]], error) {
+// CreateClient creates a Client using an api-implementation delegation to a real vault-api-client
+func CreateClient(config ClientConfig) (*Client[*api.Client, clientVaultAPIAuth[*api.Client]], error) {
 	impl, err := newClientVaultAPIImpl(config.Url, config.Insecure, config.Timeout)
 	if err != nil {
 		return nil, err
 	}
 
-	auth, err := auth.CreateVaultAuth(config.Auth)
+	vaultAuth, err := auth.CreateVaultAuth(config.Auth)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewVaultClient[*api.Client, clientVaultAPIAuth[*api.Client]](impl, auth, time.Time{}), nil
+	return NewClient[*api.Client, clientVaultAPIAuth[*api.Client]](impl, vaultAuth, time.Time{}), nil
 }
 
-// creates a VaultClient using the given api-implementation and auth
+// NewClient creates a Client using the given api-implementation and auth
 // this function should only be used in tests!
-func NewVaultClient[C any, A clientVaultAPIAuth[C]](api clientVaultAPI[C, A], auth A, tokenExpiration time.Time) *VaultClient[C, A] {
-	return &VaultClient[C, A]{api, auth, tokenExpiration}
+func NewClient[C any, A clientVaultAPIAuth[C]](api clientVaultAPI[C, A], auth A, tokenExpiration time.Time) *Client[C, A] {
+	return &Client[C, A]{api, auth, tokenExpiration}
 }
 
-func (c *VaultClient[C, A]) TakeSnapshot(ctx context.Context, writer io.Writer) error {
+func (c *Client[C, A]) TakeSnapshot(ctx context.Context, writer io.Writer) error {
 	if err := c.refreshAuth(ctx); err != nil {
 		return err
 	}
@@ -81,7 +80,7 @@ func (c *VaultClient[C, A]) TakeSnapshot(ctx context.Context, writer io.Writer) 
 	return c.api.TakeSnapshot(ctx, writer)
 }
 
-func (c *VaultClient[C, A]) refreshAuth(ctx context.Context) error {
+func (c *Client[C, A]) refreshAuth(ctx context.Context) error {
 	if c.authExpiration.Before(time.Now()) {
 		leaseDuration, err := c.api.RefreshAuth(ctx, c.auth)
 		if err != nil {

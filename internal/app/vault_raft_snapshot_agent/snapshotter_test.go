@@ -346,13 +346,13 @@ func TestSnapshotterTriggersTimerOnConfigureForLesserFrequency(t *testing.T) {
 	assert.Equal(t, newConfig.Frequency, snapshotter.config.Frequency)
 }
 
-func newClient(api *clientVaultAPIStub) *vault.VaultClient[any, clientVaultAPIAuthStub] {
-	return vault.NewVaultClient[any](api, clientVaultAPIAuthStub{}, time.Time{})
+func newClient(api *clientVaultAPIStub) *vault.Client[any, clientVaultAPIAuthStub] {
+	return vault.NewClient[any, clientVaultAPIAuthStub](api, clientVaultAPIAuthStub{}, time.Time{})
 }
 
 type clientVaultAPIAuthStub struct{}
 
-func (stub clientVaultAPIAuthStub) Login(ctx context.Context, api any) (time.Duration, error) {
+func (stub clientVaultAPIAuthStub) Login(_ context.Context, _ any) (time.Duration, error) {
 	return 0, nil
 }
 
@@ -402,7 +402,7 @@ func (stub *uploaderStub) Destination() string {
 	return ""
 }
 
-func (stub *uploaderStub) Upload(ctx context.Context, reader io.Reader, prefix string, timestamp string, suffix string, retain int) error {
+func (stub *uploaderStub) Upload(_ context.Context, reader io.Reader, prefix string, timestamp string, suffix string, _ int) error {
 	stub.uploaded = true
 	if stub.uploadFails {
 		return errors.New("upload failed")
