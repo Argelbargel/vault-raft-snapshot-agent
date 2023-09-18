@@ -473,7 +473,7 @@ it is currently not possible to e.g. upload to multiple aws regions by specifyin
 
 ## Contributors
 - Vault Raft Snapshot Agent was originally developed by [@Lucretius](https://github.com/Lucretius/vault_raft_snapshot_agent/)
-- contains improvements done by [@Boostport](https://github.com/Boostport/vault_raft_snapshot_agent/)
+- contains improvements done by [@F21](https://github.com/Boostport/vault_raft_snapshot_agent/)
 - enhancements for azure-uploader by [@vikramhansawat](https://github.com/Lucretius/vault_raft_snapshot_agent/pull/26)
 - support for additional authentication methods based on code from [@alexeiser](https://github.com/Lucretius/vault_raft_snapshot_agent/pull/25)
 - support for Openstack Swift Storage based on code from [@Pyjou](https://github.com/Lucretius/vault_raft_snapshot_agent/pull/19)
