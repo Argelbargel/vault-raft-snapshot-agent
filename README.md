@@ -95,7 +95,7 @@ Vault Raft Snapshot allows you to specify dynamic sources for properties contain
 directly into the configuration file or might change while the agent is running (or for which there exist "well-known"
 environment-variables like `AWS_DEFAULT_REGION`). For these properties you may specify either an environment variable 
 as source using `env://<variable-name>` or a file-source containing the value for the secret using `file://<file-path>`,
-where `<file-path>` may be either an absolute path or a path relative to the configuration file.  Any value not prefixed 
+where `<file-path>` may be either an absolute path or a path relative to the configuration file. Any value not prefixed 
 with `env://` or `file://` will be used as is.
 
 **Dynamic properties are validated at startup only, so if e.g. you delete the source-file for a property required to 
