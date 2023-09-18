@@ -60,10 +60,10 @@ If your configuration is right and Vault is running on the same host as the agen
 
 ## Configuration
 
-Vault Raft Snapshot Agent looks for it's configuration-file called `snapshots.<ext>`in `/etc/vault.d/` or the current 
-working directory by default. It uses [viper](https://github.com/spf13/viper) as configuration-backend, so you can write your configuration in either
+Vault Raft Snapshot Agent by default looks for it's configuration-file `snapshots.<ext>`in `/etc/vault.d/` or the current 
+working directory. It uses [viper](https://github.com/spf13/viper) as configuration-backend, so you can write your configuration in either
 json, yaml or toml.
-You can use `vault-raft-snapshot-agent --config <config-file>` to use a specific configuration file.
+You can use `vault-raft-snapshot-agent --config <config-file>` to use a custom location for your configuration-file.
 
 The Agent monitors the configuration-file for changes and reloads the configuration automatically when the file changes.
 
