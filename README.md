@@ -60,11 +60,12 @@ If your configuration is right and Vault is running on the same host as the agen
 
 ## Configuration
 
-Vault Raft Snapshot Agent looks for it's configuration-file in `/etc/vault.d/` or the current working directory by default.
-It uses [viper](https://github.com/spf13/viper) as configuration-backend, so you can write your configuration in either json, yaml or toml.
+Vault Raft Snapshot Agent looks for it's a configuration-file called `snapshots.<ext>`in `/etc/vault.d/` or the current 
+working directory by default. It uses [viper](https://github.com/spf13/viper) as configuration-backend, so you can write your configuration in either
+json, yaml or toml.
 You can use `vault-raft-snapshot-agent --config <config-file>` to use a specific configuration file.
 
-The Agent monitors the configuration-file for changes and reloads the configuration automatically when the configuration-file changes.
+The Agent monitors the configuration-file for changes and reloads the configuration automatically when the file changes.
 
 
 #### Example configuration (yaml)
@@ -112,7 +113,8 @@ For setting the address of the vault-server you can use `VAULT_ADDR` to configur
 Other than the [external property sources](#secrets-and-external-property-sources), these environment variables are read once 
 at startup only and the configuration will not be reloaded when their values change.
 
-_Options specified via environment-variables take precedence before the values specified in the configuration file - even those specified as secrets!_
+**Options specified via environment-variables take precedence before the values specified in the configuration file - 
+even those specified as [external property sources](#secrets-and-external-property-sources)!**
 
 
 ### Vault configuration
