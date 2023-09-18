@@ -90,7 +90,7 @@ uploaders:
 (for a complete example with all configuration-options see [complete.yaml](./testdata/complete.yaml))
 
 
-### Secrets and dynamic Properties
+### Secrets and external property-sources
 Vault Raft Snapshot allows you to specify dynamic sources for properties containing secrets which you either do not want to write
 into the configuration file or which might change while the agent is running. For these properties you may specify either an
 environment variable as source using `env://<variable-name>` or a file-source containing the value for the secret using 
@@ -107,10 +107,10 @@ Vault Raft Snapshot Agent supports static configuration via environment variable
 to the upper-cased path to the key and replacing `.` with `_`. For example `VRSA_SNAPSHOTS_FREQUENCY=<value>` configures
 the snapshot-frequency and `VRSA_VAULT_AUTH_TOKEN=<value>` configures the token authentication for vault.
 
-For setting the address of the vault-server there is a snapshot defined. `VAULT_ADDR` configures the url to the vault-server (same as `vault.url`).
+For setting the address of the vault-server you can use `VAULT_ADDR` to configure (same as `vault.url`).
 
-Other than the dynamic [the section above](#secrets-and-dynamic-properties) environment variables are read once at startup so the configuration will not be
-reloaded when their values change.
+Other than the [external-property sources](#secrets-and-external-property-sources), these environment variables are read once 
+at startup only and the configuration will not be reloaded when their values change.
 
 _Options specified via environment-variables take precedence before the values specified in the configuration file - even those specified as secrets!_
 
@@ -124,7 +124,9 @@ vault:
 ```
 
 - `url` *(default: https://127.0.0.1:8200)* - specifies the url of the vault-server. You can alternatively specify the url with the environment-variable `VAULT_ADDR` 
-  **The URL should point be the cluster-leader, otherwise no snapshots get taken until the server the url points to is elected leader!**  When running Vault on Kubernetes installed by the [default helm-chart](https://developer.hashicorp.com/vault/docs/platform/k8s/helm), this should be `http(s)://vault-active.<vault-namespace>.svc.cluster.local:<vault-server service-port>`. 
+  **The URL should point be the cluster-leader, otherwise no snapshots get taken until the server the url points to is elected leader!**
+  When running Vault on Kubernetes installed by the [default helm-chart](https://developer.hashicorp.com/vault/docs/platform/k8s/helm), this should be
+  `http(s)://vault-active.<vault-namespace>.svc.cluster.local:<vault-server service-port>`. 
 - `insecure` *(default: false)* - specifies whether insecure https connections are allowed or not. Set to `true` when you use self-signed certificates
 - `timeout` *(default: 60s)* - timeout for the vault-http-client (see https://golang.org/pkg/time/#ParseDuration for a full list of valid time units);
    increase for large raft databases (and increase `snapshots.timeout` accordingly!)
@@ -145,7 +147,8 @@ path "/sys/storage/raft/snapshot"
 
 The above policy is the minimum required policy to be able to generate snapshots. This policy must be associated with the app- or kubernetes-role you specify in you're configuration (see below).
 
-Only one of the following authentication options should be specified. If multiple options are specified *one* of them is used with the following priority: `approle`, `aws`, `azure`, `gcp`, `kubernetes`, `ldap`,  `token`, `userpass`. If no option is specified, Vault Raft Snapshot Agent tries to access vault unauthenticated (which should fail outside of test- or develop-environments)
+Only one of the following authentication options should be specified. If multiple options are specified *one* of them is used with the following priority: `approle`, `aws`, `azure`, `gcp`, 
+`kubernetes`, `ldap`,  `token`, `userpass`. If no option is specified, Vault Raft Snapshot Agent tries to access vault unauthenticated (which should fail outside of test- or develop-environments)
 
 Vault Raft Snapshot Agent automatically renews the authentication when it expires.
 
@@ -166,9 +169,9 @@ vault:
 
 ##### Configuration options
 - `role` **(required)** - specifies the role_id used to call the Vault API.  See the authentication steps below *This 
-   property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
+   property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
 - `secret` **(required)** - specifies the secret_id used to call the Vault API. *This property can be configured with a
-   source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
+   source that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
 - `path` *(default: approle)* - specifies the backend-name used to select the login-endpoint (`auth/<path>/login`)
 
 To allow the App-Role access to the snapshots you should run the following commands on your vault-cluster:
@@ -194,14 +197,16 @@ vault:
 ##### Configuration options
 - `role` **(required)** - specifies the role used to call the Vault API.  See the authentication steps below
 - `ec2Nonce` - enables EC2 authentication and sets the required nonce. *This property can be configured with a
-  source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
+  source that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
 - `ec2SignatureType` *(default: pkcs7)* - changes the signature-type for EC2 authentication; valid values are `identity`, `pkcs7` and `rs2048`
 - `iamServerIdHeader` - specifies the server-id-header when using IAM authentication type
 - `region` *(default: env://AWS_DEFAULT_REGION)* - specifies the aws region to use. *This property can be configured with a
-  source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
+  source that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
 - `path` *(default: aws)* - specifies the backend-name used to select the login-endpoint (`auth/<path>/login`)
 
-AWS authentication uses the IAM authentication type by default unless `ec2Nonce` is set. *The credentials for IAM authentication **must** be provided via environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` or `AWS_SHARED_CREDENTIALS_FILE`; `AWS_SHARED_CREDENTIALS_FILE` must be specified as an absolute path).*
+AWS authentication uses the IAM authentication type by default unless `ec2Nonce` is set. *The credentials for IAM authentication **must** be 
+provided via environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` or `AWS_SHARED_CREDENTIALS_FILE`; 
+`AWS_SHARED_CREDENTIALS_FILE` must be specified as an absolute path).*
 
 To allow the access to the snapshots you should run the following commands on your vault-cluster:
 ```
@@ -278,7 +283,8 @@ vault write auth/<path>/role/<role> \
 
 
 #### Kubernetes authentication
-To enable Kubernetes authentication mode, you should follow the steps from [the Vault docs](https://www.vaultproject.io/docs/auth/kubernetes#configuration) and create the appropriate policies and roles.
+To enable Kubernetes authentication mode, you should follow the steps from [the Vault docs](https://www.vaultproject.io/docs/auth/kubernetes#configuration) 
+and create the appropriate policies and roles.
 
 ##### Minimal configuration
 ```
@@ -292,7 +298,7 @@ vault:
 - `role` **(required)** - specifies vault k8s auth role
 - `path` *(default: kubernetes)* - specifies the backend-name used to select the login-endpoint (`auth/<path>/login`)
 - `jwtToken` *(default: file:///var/run/secrets/kubernetes.io/serviceaccount/token, must resolve to a non-empty value)* - specifies the JWT-Token for the kubernetes service-account.
-   *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
+   *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
 
 To allow kubernetes access to the snapshots you should run the following commands on your vault-cluster:
 ```
@@ -312,8 +318,8 @@ vault:
 ```
 
 ##### Configuration options 
-- `username` **(required)** - the username. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
-- `password` **(required)** - the password. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
+- `username` **(required)** - the username. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
+- `password` **(required)** - the password. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
 - `path` *(default: ldap)* - specifies the backend-name used to select the login-endpoint (`auth/<path>/login`)
 
 To allow access to the snapshots you should run the following commands on your vault-cluster:
@@ -335,7 +341,7 @@ vault:
 ```
 
 ##### Configuration options
-- `token` **(required)** - specifies the token used to log in. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
+- `token` **(required)** - specifies the token used to log in. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
 
 
 #### User and Password authentication
@@ -351,8 +357,8 @@ vault:
 ```
 
 ##### Configuration options 
-- `username` **(required)** - the username. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
-- `password` **(required)** - the password. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
+- `username` **(required)** - the username. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
+- `password` **(required)** - the password. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
 - `path` *(default: userpass)* - specifies the backend-name used to select the login-endpoint (`auth/<path>/login`)
 
 To allow access to the snapshots you should run the following commands on your vault-cluster:
@@ -380,9 +386,11 @@ snapshots:
 - `timeout` *(default: 60s)* - timeout for creating snapshots. Examples: `30s`, `1h`. See https://golang.org/pkg/time/#ParseDuration for a full list of valid time units
 - `namePrefix` *(default: raft-snapshot-)* - prefix of the uploaded snapshots 
 - `nameSuffix` *(default: .snap)* - suffix/extension of the uploaded snapshots
-- `timestampFormat` *(default: 2006-01-02T15-04-05Z-0700)* - timestamp-format for the uploaded snapshots' timestamp, must be valid layout string for [go's time.Format](https://pkg.go.dev/time#Time.Format) - you can test your layout-string at the [Go Playground](https://go.dev/play/p/PxX7LmcPha0).
+- `timestampFormat` *(default: 2006-01-02T15-04-05Z-0700)* - timestamp-format for the uploaded snapshots' timestamp, must be valid layout string for [go's time.Format](https://pkg.go.dev/time#Time.Format)
+   - you can test your layout-string at the [Go Playground](https://go.dev/play/p/PxX7LmcPha0).
    
-The name of the snapshots is created by concatenating `namePrefix`, the timestamp formatted according to `timestampFormat` and `nameSuffix`, e.g. the defaults would generate  `raft-snapshot-2023-09-01T15-30-00Z+0200.snap` for a snapshot taken at 15:30:00 on 09/01/2023 when the timezone is CEST (GMT + 2h).
+The name of the snapshots is created by concatenating `namePrefix`, the timestamp formatted according to `timestampFormat` and `nameSuffix`, e.g. the defaults would generate 
+`raft-snapshot-2023-09-01T15-30-00Z+0200.snap` for a snapshot taken at 15:30:00 on 09/01/2023 when the timezone is CEST (GMT + 2h).
 
 
 ### Uploader configuration
@@ -410,14 +418,17 @@ uploaders:
     authUrl: <auth-url>
 ```
 
-Note that if you specify more than one storage option, *all* specified storages will be written to.  For example, specifying `local` and `aws` will write to both locations. When using multiple remote storages, increase the timeout allowed via `snapahots.timeout` for larger raft databases. Each option can be specified exactly once; it is currently not possible to e.g. upload to multiple aws regions by specifying multiple `aws`-storage-options.
+Note that if you specify more than one storage option, *all* specified storages will be written to.  For example, specifying `local` and `aws` will write to both locations. 
+When using multiple remote storages, increase the timeout allowed via `snapahots.timeout` for larger raft databases. Each option can be specified exactly once;
+it is currently not possible to e.g. upload to multiple aws regions by specifying multiple `aws`-storage-options.
 
 
 #### AWS S3 Upload
 - `bucket` **(required)** - bucket to store snapshots in (required for AWS writes to work)
-- `accessKeyId` *(default: env://AWS_ACCESS_KEY_ID)* - specifies the access key. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)* 
-- `accessKey` *(default: env://AWS_SECRET_ACCESS_KEY, must resolve to non-empty value if accessKeyId resolves to a non-empty value)* - specifies the secret access key. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
-- `sessionToken` *(default: env//AWS_SESSION_TOKEN)* - specifies the session token *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
+- `accessKeyId` *(default: env://AWS_ACCESS_KEY_ID)* - specifies the access key. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)* 
+- `accessKey` *(default: env://AWS_SECRET_ACCESS_KEY, must resolve to non-empty value if accessKeyId resolves to a non-empty value)* - specifies the secret access key.
+  *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
+- `sessionToken` *(default: env//AWS_SESSION_TOKEN)* - specifies the session token *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
 - `region` *(default: "")* - S3 region if it is required 
 - `keyPrefix` *(default: "")* - prefix to store s3 snapshots in.  Defaults to empty string
 - `endpoint` *(default: "")* - S3 compatible storage endpoint (ex: http://127.0.0.1:9000)
@@ -427,8 +438,10 @@ Note that if you specify more than one storage option, *all* specified storages 
 
 #### Azure Storage
 - `container` **(required)** - the name of the blob container to write to
-- `accountName` *(default: env://AZURE_STORAGE_ACCOUNT, must resolve to non-empty value)* - the account name of the storage account. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
-- `accountKey` *(default: env://AZURE_STORAGE_KEY, must resolve to non-empty value)* - the account key of the storage account. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
+- `accountName` *(default: env://AZURE_STORAGE_ACCOUNT, must resolve to non-empty value)* - the account name of the storage account. *This property can be configured with a
+   source that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
+- `accountKey` *(default: env://AZURE_STORAGE_KEY, must resolve to non-empty value)* - the account key of the storage account. *This property can be configured with a source
+   that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
 - `cloudDomain` *(default: blob.core.windows.net)* - domain of the cloud-service to use
 
 
@@ -442,8 +455,10 @@ Note that if you specify more than one storage option, *all* specified storages 
 #### Openstack Swift Storage
 - `container` **(required)** - the name of the container to write to
 - `authUrl` **(required)** - the auth-url to authenticate against
-- `username` *(default: env://SWIFT_USERNAME, must resolve to non-empty value)* - the username used for authentication. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
-- `apiKey` *(default: env://SWIFT_API_KEY, must resolve to non-empty value)* - the api-key used for authentication. *This property can be configured with a source that is evaluated at runtime, see [the section above](#secrets-and-dynamic-properties)*
+- `username` *(default: env://SWIFT_USERNAME, must resolve to non-empty value)* - the username used for authentication. *This property can be configured with a source
+   that is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
+- `apiKey` *(default: env://SWIFT_API_KEY, must resolve to non-empty value)* - the api-key used for authentication. *This property can be configured with a source that
+  is evaluated at runtime, see [the section above](#secrets-and-external-property-sources)*
 - `region` *(default: env://SWIFT_REGION)* - optional region to use eg "LON", "ORD"
 - `domain` - optional user's domain name
 - `tenantId` - optional id of the tenant
