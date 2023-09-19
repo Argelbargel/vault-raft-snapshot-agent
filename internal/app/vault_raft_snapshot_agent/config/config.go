@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"log"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/logging"
 )
 
 type Parser[T Configuration] struct {
@@ -34,14 +34,14 @@ func (p Parser[T]) ReadConfig(config T, file string) error {
 
 	if err := p.delegate.ReadInConfig(); err != nil {
 		if p.delegate.IsConfigurationNotFoundError(err) {
-			log.Printf("Could not find any configuration file, will create configuration based solely on environment...")
+			logging.Warn("Could not find any configuration file, will create configuration based solely on environment...")
 		} else {
 			return err
 		}
 	}
 
 	if usedConfigFile := p.delegate.ConfigFileUsed(); usedConfigFile != "" {
-		log.Printf("Using configuration from %s...\n", usedConfigFile)
+		logging.Info(fmt.Sprintf("Using configuration from %s...", usedConfigFile))
 	}
 
 	if err := p.delegate.Unmarshal(config); err != nil {
@@ -60,7 +60,11 @@ func (p Parser[T]) OnConfigChange(config T, handler func(config T) error) <-chan
 
 	p.delegate.OnConfigChange(func() {
 		if err := p.delegate.Unmarshal(config); err != nil {
-			log.Printf("Ignoring configuration change as configuration in %s is invalid: %v\n", p.delegate.ConfigFileUsed(), err)
+			logging.Warn(
+				"Ignoring configuration change as configuration is invalid",
+				"config-file", p.delegate.ConfigFileUsed(),
+				"error", err,
+			)
 			ch <- err
 		} else {
 			ch <- handler(config)

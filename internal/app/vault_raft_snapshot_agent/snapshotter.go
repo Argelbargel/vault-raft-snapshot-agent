@@ -3,8 +3,8 @@ package vault_raft_snapshot_agent
 import (
 	"context"
 	"fmt"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/logging"
 	"io"
-	"log"
 	"os"
 	"sync"
 	"time"
@@ -71,7 +71,7 @@ func CreateSnapshotter(options SnapshotterOptions) (*Snapshotter, error) {
 		&SnapshotterConfig{},
 		func(config *SnapshotterConfig) error {
 			if err := snapshotter.reconfigure(*config); err != nil {
-				log.Printf("could not reconfigure snapshotter: %s\n", err)
+				logging.Warn("Could not reconfigure snapshotter", "error", err)
 				return err
 			}
 			return nil
@@ -121,9 +121,9 @@ func (s *Snapshotter) TakeSnapshot(ctx context.Context) (*time.Timer, error) {
 
 	defer func() {
 		if err := snapshot.Close(); err != nil {
-			fmt.Printf("could not close snapshot-temp-file %s: %s\n", snapshot.Name(), err)
+			logging.Warn("Could not close snapshot-temp-file", "file", snapshot.Name(), "error", err)
 		} else if err := os.Remove(snapshot.Name()); err != nil {
-			fmt.Printf("could not remove snapshot-temp-file %s: %s\n", snapshot.Name(), err)
+			logging.Warn("Could not remove snapshot-temp-file %s: %s", "file", snapshot.Name(), "error", err)
 		}
 	}()
 
@@ -132,11 +132,13 @@ func (s *Snapshotter) TakeSnapshot(ctx context.Context) (*time.Timer, error) {
 
 	err = s.client.TakeSnapshot(ctx, snapshot)
 	if err != nil {
+		logging.Error("Could not take snapshot of vault", "error", err)
 		return s.snapshotTimer, err
 	}
 
 	_, err = snapshot.Seek(0, io.SeekStart)
 	if err != nil {
+		logging.Error("Snapshot taken from vault was invalid/empty: %s", "error", err)
 		return s.snapshotTimer, err
 	}
 
@@ -148,10 +150,15 @@ func (s *Snapshotter) uploadSnapshot(ctx context.Context, snapshot io.Reader, ti
 	for _, uploader := range s.uploaders {
 		err := uploader.Upload(ctx, snapshot, s.config.NamePrefix, timestamp, s.config.NameSuffix, s.config.Retain)
 		if err != nil {
-			errs = multierr.Append(errs, fmt.Errorf("unable to upload snapshot to %s: %s", uploader.Destination(), err))
+			errs = multierr.Append(errs, fmt.Errorf("could not upload snapshot to %s:%s", uploader.Destination(), err))
+			logging.Warn("Could not upload snapshot", "destination", uploader.Destination(), "error", err)
 		} else {
-			log.Printf("Successfully uploaded snapshot to %s\n", uploader.Destination())
+			logging.Debug("Successfully uploaded snapshot", "destination", uploader.Destination())
 		}
+	}
+
+	if errs == nil {
+		logging.Info("Successfully uploaded snapshot to all destinations")
 	}
 
 	return errs
