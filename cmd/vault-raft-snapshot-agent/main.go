@@ -17,6 +17,15 @@ The options are:
 	-c -config <file>
 		Specifies the config-file to use.
 
+	-f -log-format [default|json|text]
+		Specifies the log-format (default: default)
+
+	-l -log-level [debug|info|warn|error]
+		Specifies the log-level (default: info)
+
+	-o -log-output [stderr|stdout|<file>]
+		Specifies the output to log to (default: stderr)
+
 If no config file is explicitly specified, the program looks for configuration-files
 with the name `snapshot` and the extensions supported by [viper]
 in the current working directory or in /etc/vault.d/snapshots.
@@ -39,6 +48,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	internal "github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/logging"
 )
 
 var Version = "development"
@@ -49,6 +59,13 @@ var snapshotterOptions = internal.SnapshotterOptions{
 	ConfigFileSearchPaths: []string{"/etc/vault.d/", "."},
 	EnvPrefix:             "VRSA",
 }
+
+const (
+	optionConfig    = "config"
+	optionLogFormat = "log-format"
+	optionLogOutput = "log-output"
+	optionLogLevel  = "log-level"
+)
 
 type quietBoolFlag struct {
 	cli.BoolFlag
@@ -71,7 +88,7 @@ func main() {
 		cli.BoolFlag{
 			Name:    "version",
 			Aliases: []string{"v"},
-			Usage:   "print the version",
+			Usage:   "prints version-information and exists",
 		},
 	}
 
@@ -81,15 +98,39 @@ func main() {
 		Description: "takes periodic snapshot of vault's raft-db",
 		Flags: []cli.Flag{
 			&cli.PathFlag{
-				Name:    "config",
+				Name:    optionConfig,
 				Aliases: []string{"c"},
-				Usage:   "Load configuration from `FILE`. If not specified, configuration is searched in /etc/vault.d and the current working directory",
-				EnvVars: []string{"VAULT_RAFT_SNAPSHOT_AGENT_CONFIG_FILE"},
+				Usage:   fmt.Sprintf("load configuration from `FILE`; if not specified, searches for %s.[json|toml|yaml] in /etc/vault.d or the current working directory", snapshotterOptions.ConfigFileName),
+				EnvVars: []string{snapshotterOptions.EnvPrefix + "_CONFIG_FILE"},
+			},
+			&cli.StringFlag{
+				Name:    optionLogFormat,
+				Aliases: []string{"f"},
+				Usage:   "format for log-output; possible values are 'default', 'text', 'json'",
+				EnvVars: []string{snapshotterOptions.EnvPrefix + "_LOG_FORMAT"},
+				Value:   logging.FormatDefault,
+			},
+			&cli.StringFlag{
+				Name:    optionLogOutput,
+				Aliases: []string{"o"},
+				Usage:   "output-target for logs; possible values are 'stderr', 'stdout' or <path-to-logfile>",
+				EnvVars: []string{snapshotterOptions.EnvPrefix + "_LOG_OUTPUT"},
+				Value:   logging.OutputStderr,
+			},
+			&cli.StringFlag{
+				Name:    optionLogLevel,
+				Aliases: []string{"l"},
+				Usage:   "log-level for logs; possible values are 'debug', 'info', 'warn' or 'error'",
+				EnvVars: []string{snapshotterOptions.EnvPrefix + "_LOG_LEVEL"},
+				Value:   logging.LevelInfo,
 			},
 		},
 		Action: func(ctx *cli.Context) error {
-			startSnapshotter(ctx.Path("config"))
-			return nil
+			err := logging.Configure(ctx.String(optionLogOutput), ctx.String(optionLogFormat), ctx.String(optionLogLevel))
+			if err != nil {
+				log.Fatalf("could not configure logging: %s", err)
+			}
+			return startSnapshotter(ctx.Path(optionConfig))
 		},
 	}
 	app.CustomAppHelpTemplate = `Usage: {{.HelpName}} [options]
@@ -100,15 +141,15 @@ Options:
 {{end}}{{$option}}{{end}}`
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
+		logging.Fatal("Could not start agent", "error", err)
 	}
 }
 
-func startSnapshotter(configFile cli.Path) {
+func startSnapshotter(configFile cli.Path) error {
 	snapshotterOptions.ConfigFilePath = configFile
 	snapshotter, err := internal.CreateSnapshotter(snapshotterOptions)
 	if err != nil {
-		log.Fatalf("Cannot create snapshotter: %s\n", err)
+		return err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -122,19 +163,17 @@ func startSnapshotter(configFile cli.Path) {
 	}()
 
 	runSnapshotter(ctx, snapshotter)
+	return nil
 }
 
 func runSnapshotter(ctx context.Context, snapshotter *internal.Snapshotter) {
 	for {
-		timeout, err := snapshotter.TakeSnapshot(ctx)
-		if err != nil {
-			log.Printf("Could not take snapshot or upload to all targets: %v\n", err)
-		}
+		timeout, _ := snapshotter.TakeSnapshot(ctx)
 		select {
 		case <-timeout.C:
 			continue
 		case <-ctx.Done():
-			os.Exit(1)
+			os.Exit(0)
 		}
 	}
 }

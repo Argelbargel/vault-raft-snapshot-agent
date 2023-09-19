@@ -2,7 +2,7 @@ package secret
 
 import (
 	"fmt"
-	"log"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/logging"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,7 +35,7 @@ func withPrefix(prefix string, value string) Secret {
 func (s Secret) String() string {
 	v, err := s.Resolve(false)
 	if err != nil {
-		log.Panicf("could not resolve %s: %s", string(s), err)
+		logging.Panic("Could not resolve %s: %s", string(s), err)
 	}
 
 	return v
