@@ -557,16 +557,16 @@ uploaders:
     authUrl: <auth-url>
 ```
 
-| Key         | Type                                                   | Required/*Default*                               | Description                                                               |
-| ----------- | ------------------------------------------------------ | ------------------------------------------------ | ------------------------------------------------------------------------- |
-| `container` | String                                                 | **required**                                     | the name of the container to write to                                     |
-| `authUrl`   | URL                                                    | **required**                                     | the auth-url to authenticate against                                      |
-| `username`  | [Secret](#secrets-and-external-property-sources)       | *env://SWIFT_USERNAME*                           | the username used for authentication; **must resolve to non-empty value** |
-| `apiKey`    |                                                        | [Secret](#secrets-and-external-property-sources) | * env://SWIFT_API_KEY*                                                    | the api-key used for authentication; **must resolve to non-empty value** |
-| `region`    | [Secret](#secrets-and-external-property-sources)       | *env://SWIFT_REGION*                             | optional region to use eg "LON", "ORD"                                    |
-| `domain`    | URL                                                    |                                                  | optional user's domain name                                               |
-| `tenantId`  | String                                                 |                                                  | optional id of the tenant                                                 |
-| `timeout`   | [Duration](https://golang.org/pkg/time/#ParseDuration) | *60s*                                            | timeout for snapshot-uploads                                              |
+| Key         | Type                                                   | Required/*Default*     | Description                                                               |
+| ----------- | ------------------------------------------------------ | ---------------------- | ------------------------------------------------------------------------- |
+| `container` | String                                                 | **required**           | the name of the container to write to                                     |
+| `authUrl`   | URL                                                    | **required**           | the auth-url to authenticate against                                      |
+| `username`  | [Secret](#secrets-and-external-property-sources)       | *env://SWIFT_USERNAME* | the username used for authentication; **must resolve to non-empty value** |
+| `apiKey`    | [Secret](#secrets-and-external-property-sources)       | *env://SWIFT_API_KEY*  | the api-key used for authentication; **must resolve to non-empty value**  |
+| `region`    | [Secret](#secrets-and-external-property-sources)       | *env://SWIFT_REGION*   | optional region to use eg "LON", "ORD"                                    |
+| `domain`    | URL                                                    |                        | optional user's domain name                                               |
+| `tenantId`  | String                                                 |                        | optional id of the tenant                                                 |
+| `timeout`   | [Duration](https://golang.org/pkg/time/#ParseDuration) | *60s*                  | timeout for snapshot-uploads                                              |
 
 ## License
 
