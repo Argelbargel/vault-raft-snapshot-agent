@@ -148,7 +148,7 @@ func (s *Snapshotter) uploadSnapshot(ctx context.Context, snapshot io.Reader, ti
 	for _, uploader := range s.uploaders {
 		err := uploader.Upload(ctx, snapshot, s.config.NamePrefix, timestamp, s.config.NameSuffix, s.config.Retain)
 		if err != nil {
-			errs = multierr.Append(errs, fmt.Errorf("unable to upload snapshot: %s", err))
+			errs = multierr.Append(errs, fmt.Errorf("unable to upload snapshot to %s: %s", uploader.Destination(), err))
 		} else {
 			log.Printf("Successfully uploaded snapshot to %s\n", uploader.Destination())
 		}
