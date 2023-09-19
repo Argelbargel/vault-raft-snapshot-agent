@@ -1,14 +1,14 @@
-package vault_raft_snapshot_agent
+package agent
 
 import (
 	"context"
 	"errors"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/upload"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/vault"
 	"io"
 	"testing"
 	"time"
 
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/upload"
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/vault"
 	"github.com/stretchr/testify/assert"
 )
 

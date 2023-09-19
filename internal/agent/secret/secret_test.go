@@ -2,13 +2,12 @@ package secret
 
 import (
 	"fmt"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/test"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/test"
 )
 
 func TestSecretResolvesEnvironmentVariable(t *testing.T) {

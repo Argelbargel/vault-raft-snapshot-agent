@@ -2,13 +2,12 @@ package config
 
 import (
 	"fmt"
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/secret"
 	"path/filepath"
 	"testing"
 
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/secret"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/test"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/test"
 )
 
 func TestUnmarshalResolvesRelativePathsInSecrets(t *testing.T) {
@@ -101,11 +100,12 @@ func TestOnConfigChangeRunsHandler(t *testing.T) {
 }
 
 func TestReadInConfigFindsConfigFile(t *testing.T) {
-	rattlesnake := newRattlesnake("test", "rattlesnake", "../../../../testdata/")
+	testDataDir := "../../../testdata/"
+	rattlesnake := newRattlesnake("test", "rattlesnake", testDataDir)
 	err := rattlesnake.ReadInConfig()
 	assert.NoError(t, err, "ReadInConfig failed unexpectedly")
 
-	expectedConfigfile, err := filepath.Abs("../../../../testdata/rattlesnake.yaml")
+	expectedConfigfile, err := filepath.Abs(testDataDir + "/rattlesnake.yaml")
 	assert.NoError(t, err, "Abs failed unexpectedly")
 	assert.Equal(t, expectedConfigfile, rattlesnake.ConfigFileUsed())
 }

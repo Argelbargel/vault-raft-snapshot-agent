@@ -1,17 +1,17 @@
-package vault_raft_snapshot_agent
+package agent
 
 import (
 	"context"
 	"fmt"
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/logging"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/logging"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/upload"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/vault"
 	"io"
 	"os"
 	"sync"
 	"time"
 
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/config"
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/upload"
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/vault"
 	"go.uber.org/multierr"
 )
 

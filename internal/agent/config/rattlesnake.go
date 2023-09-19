@@ -7,14 +7,14 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/secret"
-
 	"github.com/creasty/defaults"
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator/v10"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
+
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/secret"
 )
 
 // a rattlesnake is a viper adapted to our needs ;-)

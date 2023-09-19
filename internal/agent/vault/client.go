@@ -3,10 +3,10 @@ package vault
 import (
 	"context"
 	"fmt"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/vault/auth"
 	"io"
 	"time"
 
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/vault/auth"
 	"github.com/hashicorp/vault/api"
 )
 

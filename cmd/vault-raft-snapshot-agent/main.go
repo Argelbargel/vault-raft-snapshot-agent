@@ -40,21 +40,20 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/logging"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/urfave/cli/v2"
-
-	internal "github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent"
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/logging"
 )
 
 var Version = "development"
 var Platform = "linux/amd64"
 
-var snapshotterOptions = internal.SnapshotterOptions{
+var snapshotterOptions = agent.SnapshotterOptions{
 	ConfigFileName:        "snapshots",
 	ConfigFileSearchPaths: []string{"/etc/vault.d/", "."},
 	EnvPrefix:             "VRSA",
@@ -147,7 +146,7 @@ Options:
 
 func startSnapshotter(configFile cli.Path) error {
 	snapshotterOptions.ConfigFilePath = configFile
-	snapshotter, err := internal.CreateSnapshotter(snapshotterOptions)
+	snapshotter, err := agent.CreateSnapshotter(snapshotterOptions)
 	if err != nil {
 		return err
 	}
@@ -166,7 +165,7 @@ func startSnapshotter(configFile cli.Path) error {
 	return nil
 }
 
-func runSnapshotter(ctx context.Context, snapshotter *internal.Snapshotter) {
+func runSnapshotter(ctx context.Context, snapshotter *agent.Snapshotter) {
 	for {
 		timeout, _ := snapshotter.TakeSnapshot(ctx)
 		select {

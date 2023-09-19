@@ -5,9 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/test"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/test"
 )
 
 type configDataStub struct {

@@ -2,7 +2,7 @@ package secret
 
 import (
 	"fmt"
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/app/vault_raft_snapshot_agent/logging"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/logging"
 	"os"
 	"path/filepath"
 	"strings"
