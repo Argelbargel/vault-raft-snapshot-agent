@@ -83,6 +83,13 @@ The location of a custom configuration-file and logging are specified via the co
 | `--help,`               | `-h`          | show help                                                                                                                                                                   |
 | `--version`             | `-v`          | prints version-information and exists                                                                                                                                       |
 
+
+### Structured Logging
+
+Vault Raft Snapshot Agent uses go's [slog package](https://pkg.go.dev/log/slog) to provide structured logging capabilities. 
+Log format `text` uses [TextHandler](https://pkg.go.dev/log/slog#TextHandler), `json` uses [JSONHandler](https://pkg.go.dev/log/slog#JSONHandler).
+If no log format or `default` is specified the default log format is used which outputs the timestamp followed by the message followed by additional key=value-pairs if any are present.
+
 ## Environment variables
 
 You can specify most [command-line options](#command-line-options-and-logging) via environment-variables:
