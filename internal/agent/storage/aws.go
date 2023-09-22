@@ -1,4 +1,4 @@
-package upload
+package storage
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/secret"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
@@ -15,7 +16,8 @@ import (
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
-type AWSUploaderConfig struct {
+type AWSStorageConfig struct {
+	storageConfig           `mapstructure:",squash"`
 	AccessKeyId             secret.Secret `default:"env://AWS_ACCESS_KEY_ID"`
 	AccessKey               secret.Secret `default:"env://AWS_SECRET_ACCESS_KEY" validate:"required_with=AccessKeyId"`
 	SessionToken            secret.Secret `default:"env://AWS_SESSION_TOKEN"`
@@ -28,37 +30,37 @@ type AWSUploaderConfig struct {
 	Empty                   bool
 }
 
-type awsUploaderImpl struct {
+type awsStorageImpl struct {
+	client    *s3.Client
 	keyPrefix string
 	bucket    string
 	sse       bool
 }
 
-func createAWSUploader(config AWSUploaderConfig) uploader[AWSUploaderConfig, *s3.Client, s3Types.Object] {
+func createAWSStorageController(ctx context.Context, config AWSStorageConfig) (*storageControllerImpl[s3Types.Object], error) {
 	keyPrefix := ""
 	if config.KeyPrefix != "" {
 		keyPrefix = fmt.Sprintf("%s/", config.KeyPrefix)
 	}
 
-	return uploader[AWSUploaderConfig, *s3.Client, s3Types.Object]{
-		config,
-		awsUploaderImpl{
+	client, err := createS3Client(ctx, config)
+	if err != nil {
+		return nil, nil
+	}
+
+	return newStorageController[s3Types.Object](
+		config.storageConfig,
+		fmt.Sprintf("aws s3 bucket %s at %s", config.Bucket, config.Endpoint),
+		awsStorageImpl{
+			client:    client,
 			keyPrefix: keyPrefix,
 			bucket:    config.Bucket,
 			sse:       config.UseServerSideEncryption,
 		},
-	}
+	), nil
 }
 
-// nolint:unused
-// implements interface uploaderImpl
-func (u awsUploaderImpl) destination(config AWSUploaderConfig) string {
-	return fmt.Sprintf("aws s3 bucket %s ", config.Bucket)
-}
-
-// nolint:unused
-// implements interface uploaderImpl
-func (u awsUploaderImpl) connect(ctx context.Context, config AWSUploaderConfig) (*s3.Client, error) {
+func createS3Client(ctx context.Context, config AWSStorageConfig) (*s3.Client, error) {
 	accessKeyId, err := config.AccessKeyId.Resolve(false)
 	if err != nil {
 		return nil, err
@@ -104,8 +106,8 @@ func (u awsUploaderImpl) connect(ctx context.Context, config AWSUploaderConfig) 
 }
 
 // nolint:unused
-// implements interface uploaderImpl
-func (u awsUploaderImpl) uploadSnapshot(ctx context.Context, client *s3.Client, name string, data io.Reader) error {
+// implements interface storage
+func (u awsStorageImpl) UploadSnapshot(ctx context.Context, name string, data io.Reader) error {
 	input := &s3.PutObjectInput{
 		Bucket: &u.bucket,
 		Key:    aws.String(u.keyPrefix + name),
@@ -116,7 +118,7 @@ func (u awsUploaderImpl) uploadSnapshot(ctx context.Context, client *s3.Client, 
 		input.ServerSideEncryption = s3Types.ServerSideEncryptionAes256
 	}
 
-	uploader := manager.NewUploader(client)
+	uploader := manager.NewUploader(u.client)
 	if _, err := uploader.Upload(ctx, input); err != nil {
 		return err
 	}
@@ -125,14 +127,14 @@ func (u awsUploaderImpl) uploadSnapshot(ctx context.Context, client *s3.Client, 
 }
 
 // nolint:unused
-// implements interface uploaderImpl
-func (u awsUploaderImpl) deleteSnapshot(ctx context.Context, client *s3.Client, snapshot s3Types.Object) error {
+// implements interface storage
+func (u awsStorageImpl) DeleteSnapshot(ctx context.Context, snapshot s3Types.Object) error {
 	input := &s3.DeleteObjectInput{
 		Bucket: &u.bucket,
 		Key:    snapshot.Key,
 	}
 
-	if _, err := client.DeleteObject(ctx, input); err != nil {
+	if _, err := u.client.DeleteObject(ctx, input); err != nil {
 		return err
 	}
 
@@ -140,11 +142,11 @@ func (u awsUploaderImpl) deleteSnapshot(ctx context.Context, client *s3.Client, 
 }
 
 // nolint:unused
-// implements interface uploaderImpl
-func (u awsUploaderImpl) listSnapshots(ctx context.Context, client *s3.Client, prefix string, ext string) ([]s3Types.Object, error) {
+// implements interface storage
+func (u awsStorageImpl) ListSnapshots(ctx context.Context, prefix string, ext string) ([]s3Types.Object, error) {
 	var result []s3Types.Object
 
-	existingSnapshotList, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+	existingSnapshotList, err := u.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
 		Bucket: &u.bucket,
 		Prefix: aws.String(u.keyPrefix),
 	})
@@ -163,7 +165,7 @@ func (u awsUploaderImpl) listSnapshots(ctx context.Context, client *s3.Client, p
 }
 
 // nolint:unused
-// implements interface uploaderImpl
-func (u awsUploaderImpl) compareSnapshots(a, b s3Types.Object) int {
-	return a.LastModified.Compare(*b.LastModified)
+// implements interface storage
+func (u awsStorageImpl) GetLastModifiedTime(snapshot s3Types.Object) time.Time {
+	return *snapshot.LastModified
 }

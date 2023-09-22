@@ -10,7 +10,7 @@ type Parser[T Configuration] struct {
 }
 
 type Configuration interface {
-	HasUploaders() bool
+	HasStorages() bool
 }
 
 func NewParser[T Configuration](envPrefix string, configFilename string, configSearchPaths ...string) Parser[T] {
@@ -48,7 +48,7 @@ func (p Parser[T]) ReadConfig(config T, file string) error {
 		return fmt.Errorf("could not unmarshal configuration: %s", err)
 	}
 
-	if !config.HasUploaders() {
+	if !config.HasStorages() {
 		return fmt.Errorf("no uploaders configured")
 	}
 

@@ -41,33 +41,32 @@ snapshots:
   namePrefix: "test-"
   nameSuffix: ".test"
   timestampFormat: "2006-01-02"
-uploaders:
-  aws:
-    accessKeyId: test-key
-    accessKey: test-secret
-    sessionToken: test-session
-    region: test-region
-    bucket: test-bucket
-    keyPrefix: test-prefix
-    endpoint: test-endpoint
-    useServerSideEncryption: true
-    forcePathStyle: true
-  azure:
-    accountName: test-account
-    accountKey: test-key
-    container: test-container
-    cloudDomain: blob.core.chinacloudapi.cn
-  gcp:
-    bucket: test-bucket
-  local:
-    path: .
-  swift:
-    container: test-container
-    username: test-username
-    apiKey: test-api-key
-    authUrl: https://auth.com
-    domain: https://user.com
-    region: test-region
-    tenantId: test-tenant
-    timeout: 180s
+  storages:
+    aws:
+      accessKeyId: test-key
+      accessKey: test-secret
+      sessionToken: test-session
+      region: test-region
+      bucket: test-bucket
+      keyPrefix: test-prefix
+      endpoint: test-endpoint
+      useServerSideEncryption: true
+      forcePathStyle: true
+    azure:
+      accountName: test-account
+      accountKey: test-key
+      container: test-container
+      cloudDomain: blob.core.chinacloudapi.cn
+    gcp:
+      bucket: test-bucket
+    local:
+      path: .
+    swift:
+      container: test-container
+      username: test-username
+      apiKey: test-api-key
+      authUrl: https://auth.com
+      domain: https://user.com
+      region: test-region
+      tenantId: test-tenant
 

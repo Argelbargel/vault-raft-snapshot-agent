@@ -483,7 +483,27 @@ to `timestampFormat` and `nameSuffix`, e.g. the defaults would generate
 `raft-snapshot-2023-09-01T15-30-00Z+0200.snap` for a snapshot taken at 15:30:00 on 09/01/2023 when the timezone is
 CEST (GMT + 2h).
 
-### Uploader configuration
+The options below snapshots can be overridden for a specific storage:
+```
+snapshots:
+  frequency: 1h
+  retain: 24
+  storages:
+    local:
+      path: /snapshots
+    aws:
+      frequency: 24h
+      retain: 365
+      timestampFormat: 2006-01-02
+      #...
+```
+In this example the agent would take and store a snapshot to the local-storage every hour, retaining 24 snapshots and
+store a daily snapshot on aws remote storage, retaining the last 365 snapshots with a appropriate shorter timestamp.
+
+*Note: as the agent uses the default frequency in case of failures, you should always configure the shorter frequency in
+the defaults and specify longer frequencies for specific storages if required!*
+
+### Storage configuration
 
 Note that if you specify more than one storage option, *all* specified storages will be written to. For example,
 specifying `local` and `aws` will write to both locations.
@@ -495,9 +515,10 @@ it is currently not possible to e.g. upload to multiple aws regions by specifyin
 
 ##### Minimal Configuration
 ```
-uploaders:
-  aws:
-    bucket: <bucket>
+snapshots:
+  storage
+    aws:
+      bucket: <bucket>
 ```
 
 ##### Configuration Options
@@ -513,13 +534,16 @@ uploaders:
 | `useServerSideEncryption` | Boolean                                          | *false*                       | Set to true to turn on AWS' AES256 encryption. Support for AWS KMS keys is not currently supported                |
 | `forcePathStyle`          | Boolean                                          | *false*                       | needed if your S3 Compatible storage supports only path-style, or you would like to use S3's FIPS Endpoint        |
 
+Any option common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
+
 #### Azure Storage
 
 ##### Minimal Configuration
 ```
-uploaders:
-  azure:
-    container: <container>
+snapshots:
+  storage:
+    azure:
+      container: <container>
 ```
 
 ##### Configuration Options
@@ -530,12 +554,15 @@ uploaders:
 | `accountKey`  | [Secret](#secrets-and-external-property-sources) | *env://AZURE_STORAGE_KEY*     | the account key of the storage account; **must resolve to non-empty value**  |
 | `cloudDomain` | String                                           | *blob.core.windows.net*       | domain of the cloud-service to use                                           |
 
+Any option common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
+
 #### Google Cloud Storage
 ##### Minimal Configuration
 ```
-uploaders:
-  gcp:
-    bucket: <bucket>
+snapshots:
+  storage:
+    gcp:
+      bucket: <bucket>
 ```
 
 ##### Configuration Options
@@ -543,25 +570,31 @@ uploaders:
 | -------- | ------ | ------------------ | ----------------------------------------------------------------------------------------- |
 | `bucket` | String | **required**       | the Google Storage Bucket to write to. Auth is expected to be default machine credentials |
 
+Any option common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
+
 #### Local Storage
 ##### Minimal Configuration
 ```
-uploaders:
-  local:
-    path: <path>
+snapshots:
+  storages:
+    local:
+      path: <path>
 ```
 ##### Configuration Options
 | Key    | Type   | Required/*Default* | Description                                                                                                     |
 | ------ | ------ | ------------------ | --------------------------------------------------------------------------------------------------------------- |
 | `path` | String | **required**       | fully qualified path, not including file name, for where the snapshot should be written. i.e. `/raft/snapshots` |
 
+Any option common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
+
 #### Openstack Swift Storage
 ##### Minimal Configuration
 ```
-uploaders:
-  swift:
-    container: <container>
-    authUrl: <auth-url>
+snapshots:
+  storages:
+    swift:
+      container: <container>
+      authUrl: <auth-url>
 ```
 
 | Key         | Type                                                   | Required/*Default*     | Description                                                               |
@@ -574,6 +607,8 @@ uploaders:
 | `domain`    | URL                                                    |                        | optional user's domain name                                               |
 | `tenantId`  | String                                                 |                        | optional id of the tenant                                                 |
 | `timeout`   | [Duration](https://golang.org/pkg/time/#ParseDuration) | *60s*                  | timeout for snapshot-uploads                                              |
+
+Any option common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
 
 ## License
 

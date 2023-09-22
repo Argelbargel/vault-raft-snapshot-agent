@@ -1,65 +1,62 @@
-package upload
+package storage
 
 import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"github.com/thoas/go-funk"
 	"math/rand"
 	"os"
 	"path/filepath"
-	"slices"
 	"testing"
-	"time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/thoas/go-funk"
 )
 
 func TestLocalDestination(t *testing.T) {
-	config := LocalUploaderConfig{Path: "/test"}
-	impl := createLocalUploader(config)
+	config := LocalStorageConfig{Path: "/test"}
+	impl, _ := createLocalStorageController(context.Background(), config)
 
 	assert.Equal(t, "local path /test", impl.Destination())
 }
 
 func TestLocalUploadSnapshotFailsIfFileCannotBeCreated(t *testing.T) {
-	impl := localUploaderImpl{"./does/not/exist"}
+	impl := localStorageImpl{"./does/not/exist"}
 
-	err := impl.uploadSnapshot(context.Background(), nil, "test", &bytes.Buffer{})
+	err := impl.UploadSnapshot(context.Background(), "test", &bytes.Buffer{})
 
-	assert.Error(t, err, "uploadSnapshot() should fail if file could not be created!")
+	assert.Error(t, err, "UploadSnapshot() should fail if file could not be created!")
 }
 
 func TestLocalUploadeSnapshotCreatesFile(t *testing.T) {
-	impl := localUploaderImpl{t.TempDir()}
+	impl := localStorageImpl{t.TempDir()}
 	snapshotData := []byte("test")
 
-	err := impl.uploadSnapshot(context.Background(), nil, "test.snap", bytes.NewReader(snapshotData))
+	err := impl.UploadSnapshot(context.Background(), "test.snap", bytes.NewReader(snapshotData))
 
-	assert.NoError(t, err, "uploadSnapshot() failed unexpectedly!")
+	assert.NoError(t, err, "UploadSnapshot() failed unexpectedly!")
 
 	backupData, err := os.ReadFile(fmt.Sprintf("%s/test.snap", impl.path))
 
-	assert.NoError(t, err, "uploadSnapshot() failed unexpectedly!")
+	assert.NoError(t, err, "UploadSnapshot() failed unexpectedly!")
 	assert.Equal(t, snapshotData, backupData)
 }
 
 func TestLocalDeleteSnapshot(t *testing.T) {
-	impl := localUploaderImpl{t.TempDir()}
+	impl := localStorageImpl{t.TempDir()}
 	snapshotData := []byte("test")
 
 	defer func() {
 		_ = os.RemoveAll(filepath.Dir(impl.path))
 	}()
 
-	err := impl.uploadSnapshot(context.Background(), nil, "test.snap", bytes.NewReader(snapshotData))
-	assert.NoError(t, err, "uploadSnapshot() failed unexpectedly!")
+	err := impl.UploadSnapshot(context.Background(), "test.snap", bytes.NewReader(snapshotData))
+	assert.NoError(t, err, "UploadSnapshot() failed unexpectedly!")
 
 	info, err := os.Stat(fmt.Sprintf("%s/test.snap", impl.path))
 	assert.NoError(t, err, "could not get info for snapshot: %v", err)
 
-	err = impl.deleteSnapshot(context.Background(), nil, info)
-	assert.NoError(t, err, "deleteSnapshot() failed unexpectedly!")
+	err = impl.DeleteSnapshot(context.Background(), info)
+	assert.NoError(t, err, "DeleteSnapshot() failed unexpectedly!")
 
 	_, err = os.Stat(fmt.Sprintf("%s/test.snap", impl.path))
 	assert.Error(t, err)
@@ -67,14 +64,14 @@ func TestLocalDeleteSnapshot(t *testing.T) {
 }
 
 func TestLocalListSnapshots(t *testing.T) {
-	impl := localUploaderImpl{t.TempDir()}
+	impl := localStorageImpl{t.TempDir()}
 
 	var expectedSnaphotNames []string
 	for i := 0; i < 3; i++ {
 		expectedSnaphotNames = append(expectedSnaphotNames, createEmptySnapshot(t, impl.path, "test", ".snap").Name())
 	}
 
-	listedSnapshots, err := impl.listSnapshots(context.Background(), nil, "test", ".snap")
+	listedSnapshots, err := impl.ListSnapshots(context.Background(), "test", ".snap")
 	listedSnapshotNames := funk.Map(listedSnapshots, func(s os.FileInfo) string { return s.Name() })
 
 	assert.NoError(t, err)
@@ -82,18 +79,11 @@ func TestLocalListSnapshots(t *testing.T) {
 	assert.ElementsMatch(t, expectedSnaphotNames, listedSnapshotNames)
 }
 
-func TestLocalCompareSnaphots(t *testing.T) {
-	impl := localUploaderImpl{t.TempDir()}
+func TestLocalGetLastModifiedTime(t *testing.T) {
+	impl := localStorageImpl{t.TempDir()}
 
-	oldSnapshot := createEmptySnapshot(t, impl.path, "test", ".snap")
-	time.Sleep(time.Second)
-	newSnapshot := createEmptySnapshot(t, impl.path, "test", ".snap")
-
-	snapshots := []os.FileInfo{newSnapshot, oldSnapshot}
-
-	slices.SortFunc(snapshots, impl.compareSnapshots)
-
-	assert.Equal(t, []os.FileInfo{oldSnapshot, newSnapshot}, snapshots)
+	snapshot := createEmptySnapshot(t, impl.path, "test", ".snap")
+	assert.Equal(t, snapshot.ModTime(), impl.GetLastModifiedTime(snapshot))
 }
 
 func createEmptySnapshot(t *testing.T, dir string, prefix string, suffix string) os.FileInfo {
