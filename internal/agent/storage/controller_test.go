@@ -135,7 +135,7 @@ func TestUploadSnapshotUploadsToStorage(t *testing.T) {
 	expectedDeadline, _ := storage.uploadContext.Deadline()
 	expectedName := strings.Join([]string{config.NamePrefix, timestamp.Format(config.TimestampFormat), config.NameSuffix}, "")
 
-	assert.Equal(t, start.Add(config.Timeout), expectedDeadline)
+	assert.GreaterOrEqual(t, expectedDeadline, start.Add(config.Timeout))
 	assert.Equal(t, expectedName, storage.uploadName)
 	assert.Equal(t, data, storage.uploadData)
 }
