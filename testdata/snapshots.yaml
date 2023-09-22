@@ -3,6 +3,7 @@ vault:
     kubernetes:
       role: "test-role"
       jwtToken: "file://./jwt"
-uploaders:
-  local:
-    path: .
+snapshots:
+  storages:
+    local:
+      path: .

@@ -53,7 +53,7 @@ import (
 var Version = "development"
 var Platform = "linux/amd64"
 
-var snapshotterOptions = agent.SnapshotterOptions{
+var agentOptions = agent.SnapshotAgentOptions{
 	ConfigFileName:        "snapshots",
 	ConfigFileSearchPaths: []string{"/etc/vault.d/", "."},
 	EnvPrefix:             "VRSA",
@@ -65,6 +65,36 @@ const (
 	optionLogOutput = "log-output"
 	optionLogLevel  = "log-level"
 )
+
+var cliFlags = []cli.Flag{
+	&cli.PathFlag{
+		Name:    optionConfig,
+		Aliases: []string{"c"},
+		Usage:   fmt.Sprintf("load configuration from `FILE`; if not specified, searches for %s.[json|toml|yaml] in /etc/vault.d or the current working directory", agentOptions.ConfigFileName),
+		EnvVars: []string{agentOptions.EnvPrefix + "_CONFIG_FILE"},
+	},
+	&cli.StringFlag{
+		Name:    optionLogFormat,
+		Aliases: []string{"f"},
+		Usage:   "format for log-output; possible values are 'default', 'text', 'json'",
+		EnvVars: []string{agentOptions.EnvPrefix + "_LOG_FORMAT"},
+		Value:   logging.FormatDefault,
+	},
+	&cli.StringFlag{
+		Name:    optionLogOutput,
+		Aliases: []string{"o"},
+		Usage:   "output-target for logs; possible values are 'stderr', 'stdout' or <path-to-logfile>",
+		EnvVars: []string{agentOptions.EnvPrefix + "_LOG_OUTPUT"},
+		Value:   logging.OutputStderr,
+	},
+	&cli.StringFlag{
+		Name:    optionLogLevel,
+		Aliases: []string{"l"},
+		Usage:   "log-level for logs; possible values are 'debug', 'info', 'warn' or 'error'",
+		EnvVars: []string{agentOptions.EnvPrefix + "_LOG_LEVEL"},
+		Value:   logging.LevelInfo,
+	},
+}
 
 type quietBoolFlag struct {
 	cli.BoolFlag
@@ -95,41 +125,15 @@ func main() {
 		Name:        "vault-raft-snapshot-agent",
 		Version:     Version,
 		Description: "takes periodic snapshot of vault's raft-db",
-		Flags: []cli.Flag{
-			&cli.PathFlag{
-				Name:    optionConfig,
-				Aliases: []string{"c"},
-				Usage:   fmt.Sprintf("load configuration from `FILE`; if not specified, searches for %s.[json|toml|yaml] in /etc/vault.d or the current working directory", snapshotterOptions.ConfigFileName),
-				EnvVars: []string{snapshotterOptions.EnvPrefix + "_CONFIG_FILE"},
-			},
-			&cli.StringFlag{
-				Name:    optionLogFormat,
-				Aliases: []string{"f"},
-				Usage:   "format for log-output; possible values are 'default', 'text', 'json'",
-				EnvVars: []string{snapshotterOptions.EnvPrefix + "_LOG_FORMAT"},
-				Value:   logging.FormatDefault,
-			},
-			&cli.StringFlag{
-				Name:    optionLogOutput,
-				Aliases: []string{"o"},
-				Usage:   "output-target for logs; possible values are 'stderr', 'stdout' or <path-to-logfile>",
-				EnvVars: []string{snapshotterOptions.EnvPrefix + "_LOG_OUTPUT"},
-				Value:   logging.OutputStderr,
-			},
-			&cli.StringFlag{
-				Name:    optionLogLevel,
-				Aliases: []string{"l"},
-				Usage:   "log-level for logs; possible values are 'debug', 'info', 'warn' or 'error'",
-				EnvVars: []string{snapshotterOptions.EnvPrefix + "_LOG_LEVEL"},
-				Value:   logging.LevelInfo,
-			},
-		},
+		Flags:       cliFlags,
 		Action: func(ctx *cli.Context) error {
 			err := logging.Configure(ctx.String(optionLogOutput), ctx.String(optionLogFormat), ctx.String(optionLogLevel))
 			if err != nil {
 				log.Fatalf("could not configure logging: %s", err)
 			}
-			return startSnapshotter(ctx.Path(optionConfig))
+
+			agentOptions.ConfigFilePath = ctx.Path(optionConfig)
+			return run()
 		},
 	}
 	app.CustomAppHelpTemplate = `Usage: {{.HelpName}} [options]
@@ -144,13 +148,7 @@ Options:
 	}
 }
 
-func startSnapshotter(configFile cli.Path) error {
-	snapshotterOptions.ConfigFilePath = configFile
-	snapshotter, err := agent.CreateSnapshotter(snapshotterOptions)
-	if err != nil {
-		return err
-	}
-
+func run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -161,15 +159,19 @@ func startSnapshotter(configFile cli.Path) error {
 		cancel()
 	}()
 
-	runSnapshotter(ctx, snapshotter)
-	return nil
+	return runAgent(ctx)
 }
 
-func runSnapshotter(ctx context.Context, snapshotter *agent.Snapshotter) {
+func runAgent(ctx context.Context) error {
+	snapshotAgent, err := agent.CreateSnapshotAgent(ctx, agentOptions)
+	if err != nil {
+		return err
+	}
+
 	for {
-		timeout, _ := snapshotter.TakeSnapshot(ctx)
+		nextSnapshotTimer := snapshotAgent.TakeSnapshot(ctx)
 		select {
-		case <-timeout.C:
+		case <-nextSnapshotTimer.C:
 			continue
 		case <-ctx.Done():
 			os.Exit(0)

@@ -25,7 +25,7 @@ type configDataStub struct {
 	}
 }
 
-func (stub configDataStub) HasUploaders() bool {
+func (stub configDataStub) HasStorages() bool {
 	return stub.hasUploaders
 }
 
