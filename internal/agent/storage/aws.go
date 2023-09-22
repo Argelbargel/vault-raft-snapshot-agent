@@ -3,17 +3,17 @@ package storage
 import (
 	"context"
 	"fmt"
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/secret"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
 	"io"
 	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	s3Config "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 type AWSStorageConfig struct {
@@ -37,7 +37,7 @@ type awsStorageImpl struct {
 	sse       bool
 }
 
-func createAWSStorageController(ctx context.Context, config AWSStorageConfig) (*storageControllerImpl[s3Types.Object], error) {
+func createAWSStorageController(ctx context.Context, config AWSStorageConfig) (*storageControllerImpl[types.Object], error) {
 	keyPrefix := ""
 	if config.KeyPrefix != "" {
 		keyPrefix = fmt.Sprintf("%s/", config.KeyPrefix)
@@ -48,7 +48,7 @@ func createAWSStorageController(ctx context.Context, config AWSStorageConfig) (*
 		return nil, nil
 	}
 
-	return newStorageController[s3Types.Object](
+	return newStorageController[types.Object](
 		config.storageConfig,
 		fmt.Sprintf("aws s3 bucket %s at %s", config.Bucket, config.Endpoint),
 		awsStorageImpl{
@@ -81,7 +81,7 @@ func createS3Client(ctx context.Context, config AWSStorageConfig) (*s3.Client, e
 		return nil, err
 	}
 
-	clientConfig, err := awsConfig.LoadDefaultConfig(ctx, awsConfig.WithRegion(region))
+	clientConfig, err := s3Config.LoadDefaultConfig(ctx, s3Config.WithRegion(region))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load default aws config: %w", err)
 	}
@@ -115,7 +115,7 @@ func (u awsStorageImpl) UploadSnapshot(ctx context.Context, name string, data io
 	}
 
 	if u.sse {
-		input.ServerSideEncryption = s3Types.ServerSideEncryptionAes256
+		input.ServerSideEncryption = types.ServerSideEncryptionAes256
 	}
 
 	uploader := manager.NewUploader(u.client)
@@ -128,7 +128,7 @@ func (u awsStorageImpl) UploadSnapshot(ctx context.Context, name string, data io
 
 // nolint:unused
 // implements interface storage
-func (u awsStorageImpl) DeleteSnapshot(ctx context.Context, snapshot s3Types.Object) error {
+func (u awsStorageImpl) DeleteSnapshot(ctx context.Context, snapshot types.Object) error {
 	input := &s3.DeleteObjectInput{
 		Bucket: &u.bucket,
 		Key:    snapshot.Key,
@@ -143,8 +143,8 @@ func (u awsStorageImpl) DeleteSnapshot(ctx context.Context, snapshot s3Types.Obj
 
 // nolint:unused
 // implements interface storage
-func (u awsStorageImpl) ListSnapshots(ctx context.Context, prefix string, ext string) ([]s3Types.Object, error) {
-	var result []s3Types.Object
+func (u awsStorageImpl) ListSnapshots(ctx context.Context, prefix string, ext string) ([]types.Object, error) {
+	var result []types.Object
 
 	existingSnapshotList, err := u.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
 		Bucket: &u.bucket,
@@ -166,6 +166,6 @@ func (u awsStorageImpl) ListSnapshots(ctx context.Context, prefix string, ext st
 
 // nolint:unused
 // implements interface storage
-func (u awsStorageImpl) GetLastModifiedTime(snapshot s3Types.Object) time.Time {
+func (u awsStorageImpl) GetLastModifiedTime(snapshot types.Object) time.Time {
 	return *snapshot.LastModified
 }

@@ -3,10 +3,10 @@ package storage
 import (
 	"context"
 	"fmt"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
 	"io"
 	"time"
 
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/secret"
 	"github.com/ncw/swift/v2"
 )
 

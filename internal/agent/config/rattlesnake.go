@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	secret2 "github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -13,8 +14,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
-
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/secret"
 )
 
 // a rattlesnake is a viper adapted to our needs ;-)
@@ -81,12 +80,12 @@ func (r rattlesnake) Unmarshal(config interface{}) error {
 		return fmt.Errorf("could not set configuration's default-values: %s", err)
 	}
 
-	if err := secret.ResolveFilePaths(config, filepath.Dir(r.ConfigFileUsed())); err != nil {
+	if err := secret2.ResolveFilePaths(config, filepath.Dir(r.ConfigFileUsed())); err != nil {
 		return fmt.Errorf("could not resolve relative paths in configuration: %s", err)
 	}
 
 	validate := validator.New()
-	validate.RegisterCustomTypeFunc(validateSecret, secret.Zero)
+	validate.RegisterCustomTypeFunc(validateSecret, secret2.Zero)
 	if err := validate.Struct(config); err != nil {
 		return err
 	}
@@ -108,7 +107,7 @@ func (r rattlesnake) IsConfigurationNotFoundError(err error) bool {
 }
 
 func validateSecret(field reflect.Value) interface{} {
-	s, ok := field.Interface().(secret.Secret)
+	s, ok := field.Interface().(secret2.Secret)
 	if !ok {
 		return nil
 	}

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/secret"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
 	"testing"
 	"time"
 

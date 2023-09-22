@@ -1,13 +1,13 @@
 package agent
 
 import (
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config"
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/secret"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/storage"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/vault"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/vault/auth"

@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/secret"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
 	"github.com/hashicorp/vault/api/auth/kubernetes"
 )
 
