@@ -31,7 +31,7 @@ func TestTakeSnapshotUploadsSnapshot(t *testing.T) {
 
 	ctx := context.Background()
 
-	agent := SnapshotAgent{}
+	agent := newSnapshotAgent(t.TempDir())
 	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
 
 	start := time.Now()
@@ -53,7 +53,7 @@ func TestTakeSnapshotLocksTakeSnapshot(t *testing.T) {
 
 	ctx := context.Background()
 
-	agent := SnapshotAgent{}
+	agent := newSnapshotAgent(t.TempDir())
 	agent.update(ctx, newClient(clientVaultAPI), &storage.Manager{}, storage.StorageConfigDefaults{})
 
 	start := time.Now()
@@ -84,7 +84,7 @@ func TestTakeSnapshotLocksUpdate(t *testing.T) {
 
 	ctx := context.Background()
 
-	agent := SnapshotAgent{}
+	agent := newSnapshotAgent(t.TempDir())
 	agent.update(ctx, newClient(clientVaultAPI), &storage.Manager{}, storage.StorageConfigDefaults{})
 
 	start := time.Now()
@@ -128,7 +128,7 @@ func TestTakeSnapshotFailsWhenTempFileCannotBeCreated(t *testing.T) {
 
 	ctx := context.Background()
 
-	agent := SnapshotAgent{tempDir: "./missing"}
+	agent := newSnapshotAgent("./missing")
 	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
 
 	start := time.Now()
@@ -158,7 +158,7 @@ func TestTakeSnapshotFailsWhenSnapshottingFails(t *testing.T) {
 
 	ctx := context.Background()
 
-	agent := SnapshotAgent{}
+	agent := newSnapshotAgent(t.TempDir())
 	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
 
 	start := time.Now()
@@ -187,7 +187,7 @@ func TestTakeSnapshotIgnoresEmptySnapshot(t *testing.T) {
 
 	ctx := context.Background()
 
-	agent := SnapshotAgent{}
+	agent := newSnapshotAgent(t.TempDir())
 	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
 
 	start := time.Now()
@@ -217,7 +217,7 @@ func TestIgnoresZeroTimeForScheduling(t *testing.T) {
 
 	ctx := context.Background()
 
-	agent := SnapshotAgent{}
+	agent := newSnapshotAgent(t.TempDir())
 	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
 
 	start := time.Now()
@@ -227,6 +227,34 @@ func TestIgnoresZeroTimeForScheduling(t *testing.T) {
 	assert.True(t, clientVaultAPI.tookSnapshot)
 	assert.Equal(t, clientVaultAPI.snapshotData, controller.uploadData)
 	assert.WithinRange(t, time.Now(), start.Add(defaults.Frequency), start.Add(defaults.Frequency*2))
+}
+
+func TestUpdateReschedulesSnapshots(t *testing.T) {
+	clientVaultAPI := &clientVaultAPIStub{
+		leader:       true,
+		snapshotData: "test",
+	}
+
+	manager := &storage.Manager{}
+	manager.AddStorage(&storageControllerStub{nextSnapshot: time.Now().Add(time.Millisecond * 250)})
+
+	newController := &storageControllerStub{nextSnapshot: time.Now().Add(time.Millisecond * 500)}
+	newManager := &storage.Manager{}
+	newManager.AddStorage(newController)
+
+	ctx := context.Background()
+	agent := newSnapshotAgent(t.TempDir())
+	agent.update(ctx, newClient(clientVaultAPI), manager, storage.StorageConfigDefaults{})
+	timer := agent.TakeSnapshot(ctx)
+
+	go func() {
+		agent.update(ctx, newClient(clientVaultAPI), newManager, storage.StorageConfigDefaults{})
+	}()
+
+	<-timer.C
+
+	assert.GreaterOrEqual(t, time.Now(), newController.nextSnapshot)
+	assert.Equal(t, newManager, agent.manager)
 }
 
 func newClient(api *clientVaultAPIStub) *vault.Client[any, clientVaultAPIAuthStub] {

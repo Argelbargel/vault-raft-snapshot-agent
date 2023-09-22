@@ -89,10 +89,16 @@ func CreateSnapshotAgent(ctx context.Context, options SnapshotAgentOptions) (*Sn
 }
 
 func createSnapshotAgent(ctx context.Context, config SnapshotAgentConfig) (*SnapshotAgent, error) {
-	agent := &SnapshotAgent{}
-
+	agent := newSnapshotAgent("")
 	err := agent.reconfigure(ctx, config)
 	return agent, err
+}
+
+func newSnapshotAgent(tempDir string) *SnapshotAgent {
+	return &SnapshotAgent{
+		snapshotTimer: time.NewTimer(0),
+		tempDir:       tempDir,
+	}
 }
 
 func (a *SnapshotAgent) reconfigure(ctx context.Context, config SnapshotAgentConfig) error {
@@ -117,7 +123,6 @@ func (a *SnapshotAgent) update(ctx context.Context, client snapshotAgentVaultAPI
 	a.client = client
 	a.manager = manager
 	a.storageConfigDefaults = defaults
-	a.snapshotTimer = time.NewTimer(0)
 	a.updateTimer(manager.ScheduleSnapshot(ctx, a.lastSnapshotTime, a.storageConfigDefaults))
 }
 
