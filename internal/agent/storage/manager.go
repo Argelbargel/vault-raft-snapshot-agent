@@ -90,8 +90,8 @@ func (m *Manager) AddStorage(controller storageController) {
 func (m *Manager) ScheduleSnapshot(ctx context.Context, lastSnapshotTime time.Time, defaults StorageConfigDefaults) time.Time {
 	nextSnapshot := time.Time{}
 
-	for _, uploader := range m.controllers {
-		candidate := uploader.ScheduleSnapshot(ctx, lastSnapshotTime, defaults)
+	for _, controller := range m.controllers {
+		candidate := controller.ScheduleSnapshot(ctx, lastSnapshotTime, defaults)
 		if nextSnapshot.IsZero() || candidate.Before(nextSnapshot) {
 			nextSnapshot = candidate
 		}
