@@ -483,7 +483,7 @@ to `timestampFormat` and `nameSuffix`, e.g. the defaults would generate
 `raft-snapshot-2023-09-01T15-30-00Z+0200.snap` for a snapshot taken at 15:30:00 on 09/01/2023 when the timezone is
 CEST (GMT + 2h).
 
-The options below snapshots can be overridden for a specific storage:
+These options can be overridden for a specific storage:
 ```
 snapshots:
   frequency: 1h
