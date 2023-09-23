@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -9,14 +10,6 @@ import (
 	"testing"
 	"time"
 )
-
-func TestDestination(t *testing.T) {
-	controller := &storageControllerImpl[time.Time]{
-		destination: "test",
-	}
-
-	assert.Equal(t, controller.destination, controller.Destination())
-}
 
 func TestScheduleSnapshotPrefersLastUploadTimeAndStorageConfig(t *testing.T) {
 	lastUploadTime := time.Now()
@@ -31,7 +24,9 @@ func TestScheduleSnapshotPrefersLastUploadTimeAndStorageConfig(t *testing.T) {
 		lastUpload: lastUploadTime,
 	}
 
-	assert.Equal(t, lastUploadTime.Add(config.Frequency), controller.ScheduleSnapshot(context.Background(), time.Time{}, StorageConfigDefaults{}))
+	nextSnapshot, err := controller.ScheduleSnapshot(context.Background(), time.Time{}, StorageConfigDefaults{})
+	assert.NoError(t, err, "ScheduleSnapshot failed unexpectedly")
+	assert.Equal(t, lastUploadTime.Add(config.Frequency), nextSnapshot)
 }
 
 func TestScheduleSnapshotFallsBackOnStorageConfigDefaults(t *testing.T) {
@@ -45,7 +40,9 @@ func TestScheduleSnapshotFallsBackOnStorageConfigDefaults(t *testing.T) {
 		lastUpload: lastUploadTime,
 	}
 
-	assert.Equal(t, lastUploadTime.Add(defaults.Frequency), controller.ScheduleSnapshot(context.Background(), time.Time{}, defaults))
+	nextSnapshot, err := controller.ScheduleSnapshot(context.Background(), time.Time{}, defaults)
+	assert.NoError(t, err, "ScheduleSnapshot failed unexpectedly")
+	assert.Equal(t, lastUploadTime.Add(defaults.Frequency), nextSnapshot)
 }
 
 func TestScheduleSnapshotFallsBackOnLastSnapshotTime(t *testing.T) {
@@ -60,7 +57,9 @@ func TestScheduleSnapshotFallsBackOnLastSnapshotTime(t *testing.T) {
 		config: config,
 	}
 
-	assert.Equal(t, lastSnapshotTime.Add(config.Frequency), controller.ScheduleSnapshot(context.Background(), lastSnapshotTime, StorageConfigDefaults{}))
+	nextSnapshot, err := controller.ScheduleSnapshot(context.Background(), lastSnapshotTime, StorageConfigDefaults{})
+	assert.NoError(t, err, "ScheduleSnapshot failed unexpectedly")
+	assert.Equal(t, lastSnapshotTime.Add(config.Frequency), nextSnapshot)
 }
 
 func TestScheduleSnapshotFallsBackOnStorageLastModifiedTime(t *testing.T) {
@@ -80,7 +79,9 @@ func TestScheduleSnapshotFallsBackOnStorageLastModifiedTime(t *testing.T) {
 		storage: storage,
 	}
 
-	assert.Equal(t, storageLastModifiedTime.Add(config.Frequency), controller.ScheduleSnapshot(context.Background(), time.Time{}, StorageConfigDefaults{}))
+	nextSnapshot, err := controller.ScheduleSnapshot(context.Background(), time.Time{}, StorageConfigDefaults{})
+	assert.NoError(t, err, "ScheduleSnapshot failed unexpectedly")
+	assert.Equal(t, storageLastModifiedTime.Add(config.Frequency), nextSnapshot)
 }
 
 func TestScheduleSnapshotReturnsZeroIfNoFallbackPossible(t *testing.T) {
@@ -97,7 +98,9 @@ func TestScheduleSnapshotReturnsZeroIfNoFallbackPossible(t *testing.T) {
 		storage: storage,
 	}
 
-	assert.Zero(t, controller.ScheduleSnapshot(context.Background(), time.Time{}, StorageConfigDefaults{}))
+	nextSnapshot, err := controller.ScheduleSnapshot(context.Background(), time.Time{}, StorageConfigDefaults{})
+	assert.Error(t, err)
+	assert.Zero(t, nextSnapshot)
 }
 
 func TestUploadSnapshotUploadsToStorage(t *testing.T) {
@@ -127,7 +130,7 @@ func TestUploadSnapshotUploadsToStorage(t *testing.T) {
 		timestamp,
 		StorageConfigDefaults{},
 	)
-	assert.NoError(t, err, "UploadSnapshot failed unexpectedly")
+	assert.NoError(t, err, "uploadSnapshot failed unexpectedly")
 
 	assert.True(t, uploaded)
 	assert.Equal(t, timestamp.Add(config.Frequency), nextSnapshot)
@@ -138,6 +141,33 @@ func TestUploadSnapshotUploadsToStorage(t *testing.T) {
 	assert.GreaterOrEqual(t, expectedDeadline, start.Add(config.Timeout))
 	assert.Equal(t, expectedName, storage.uploadName)
 	assert.Equal(t, data, storage.uploadData)
+}
+
+func TestUploadSnapshotHandlesStorageFailure(t *testing.T) {
+	config := storageConfigStub{
+		storageConfig{
+			Frequency: time.Minute,
+		},
+	}
+
+	storage := &storageStub{uploadFails: true}
+	controller := &storageControllerImpl[time.Time]{
+		config:  config,
+		storage: storage,
+	}
+
+	ctx := context.Background()
+	timestamp := time.Now()
+	uploaded, nextSnapshot, err := controller.UploadSnapshot(
+		ctx,
+		strings.NewReader("test"),
+		timestamp,
+		StorageConfigDefaults{},
+	)
+
+	assert.False(t, uploaded)
+	assert.Error(t, err, "uploadSnapshot should return error if storage fails")
+	assert.Equal(t, timestamp.Add(config.Frequency), nextSnapshot)
 }
 
 func TestDeletesObsoleteSnapshots(t *testing.T) {
@@ -159,7 +189,7 @@ func TestDeletesObsoleteSnapshots(t *testing.T) {
 	}
 
 	deleted, err := controller.DeleteObsoleteSnapshots(context.Background(), StorageConfigDefaults{})
-	assert.NoError(t, err, "UploadSnapshot failed unexpectedly")
+	assert.NoError(t, err, "DeleteObsoleteSnapshots failed unexpectedly")
 
 	assert.Equal(t, 2, deleted)
 	assert.Equal(t, []time.Time{now.Add(time.Second), now.Add(time.Second * 2)}, storage.snapshots)
@@ -185,7 +215,7 @@ func TestDeleteObsoleteSnapshotsIgnoresFailures(t *testing.T) {
 	}
 
 	deleted, err := controller.DeleteObsoleteSnapshots(context.Background(), StorageConfigDefaults{})
-	assert.NoError(t, err, "UploadSnapshot failed unexpectedly")
+	assert.NoError(t, err, "DeleteObsoleteSnapshots failed unexpectedly")
 
 	assert.Equal(t, 1, deleted)
 	assert.Equal(t, []time.Time{now.Add(time.Second), now.Add(time.Second * 2), now.Add(time.Hour)}, storage.snapshots)
@@ -194,8 +224,7 @@ func TestDeleteObsoleteSnapshotsIgnoresFailures(t *testing.T) {
 func TestDeleteObsoleteSnapshotsSkipsWhenNothingToRetain(t *testing.T) {
 	config := storageConfigStub{
 		storageConfig{
-			Retain:     0,
-			NamePrefix: "test",
+			Retain: 0,
 		},
 	}
 
@@ -207,10 +236,50 @@ func TestDeleteObsoleteSnapshotsSkipsWhenNothingToRetain(t *testing.T) {
 	}
 
 	deleted, err := controller.DeleteObsoleteSnapshots(context.Background(), StorageConfigDefaults{})
-	assert.NoError(t, err, "UploadSnapshot failed unexpectedly")
+	assert.NoError(t, err, "DeleteObsoleteSnapshots failed unexpectedly")
 
 	assert.Equal(t, 0, deleted)
 	assert.Zero(t, storage.listPrefix)
+}
+
+func TestDeleteObsoleteSnapshotsHandlesStorageFailure(t *testing.T) {
+	config := storageConfigStub{
+		storageConfig{
+			Retain: 1,
+		},
+	}
+
+	storage := &storageStub{listFails: true}
+	controller := &storageControllerImpl[time.Time]{
+		config:  config,
+		storage: storage,
+	}
+
+	deleted, err := controller.DeleteObsoleteSnapshots(context.Background(), StorageConfigDefaults{})
+	assert.Equal(t, 0, deleted)
+	assert.Error(t, err, "DeleteObsoleteSnapshots should fail if storage fails")
+}
+
+func TestDeleteObsoleteSnapshotsSkipsWhenNothingToDelete(t *testing.T) {
+	config := storageConfigStub{
+		storageConfig{
+			Retain:     1,
+			NamePrefix: "test",
+		},
+	}
+
+	storage := &storageStub{snapshots: []time.Time{time.Now().Add(time.Minute)}}
+	controller := &storageControllerImpl[time.Time]{
+		config:  config,
+		storage: storage,
+	}
+
+	deleted, err := controller.DeleteObsoleteSnapshots(context.Background(), StorageConfigDefaults{})
+	assert.NoError(t, err, "DeleteObsoleteSnapshots failed unexpectedly")
+
+	assert.Equal(t, 0, deleted)
+	assert.Equal(t, config.NamePrefix, storage.listPrefix)
+	assert.False(t, storage.deleted)
 }
 
 func TestUploadSnapshotSkipsUploadBeforeScheduledTime(t *testing.T) {
@@ -233,7 +302,7 @@ func TestUploadSnapshotSkipsUploadBeforeScheduledTime(t *testing.T) {
 		controller.lastUpload.Add(time.Second),
 		StorageConfigDefaults{},
 	)
-	assert.NoError(t, err, "UploadSnapshot failed unexpectedly")
+	assert.NoError(t, err, "uploadSnapshot failed unexpectedly")
 
 	assert.False(t, uploaded)
 	assert.Equal(t, controller.lastUpload.Add(config.Frequency), nextSnapshot)
@@ -247,9 +316,11 @@ type storageConfigStub struct {
 type storageStub struct {
 	snapshots      []time.Time
 	uploadContext  context.Context
+	uploadFails    bool
 	uploadName     string
 	uploadData     string
 	deleteFailures []time.Time
+	listFails      bool
 	listPrefix     string
 	listSuffix     string
 	deleted        bool
@@ -257,7 +328,7 @@ type storageStub struct {
 
 // nolint:unused
 // implements interface storage
-func (stub *storageStub) UploadSnapshot(ctx context.Context, name string, data io.Reader) error {
+func (stub *storageStub) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
 	stub.uploadContext = ctx
 	stub.uploadName = name
 	upload, err := io.ReadAll(data)
@@ -265,12 +336,15 @@ func (stub *storageStub) UploadSnapshot(ctx context.Context, name string, data i
 		return err
 	}
 	stub.uploadData = string(upload)
+	if stub.uploadFails {
+		return errors.New("upload failed")
+	}
 	return nil
 }
 
 // nolint:unused
 // implements interface storage
-func (stub *storageStub) DeleteSnapshot(_ context.Context, snapshot time.Time) error {
+func (stub *storageStub) deleteSnapshot(_ context.Context, snapshot time.Time) error {
 	stub.deleted = false
 	for _, s := range stub.deleteFailures {
 		if s == snapshot {
@@ -291,15 +365,19 @@ func (stub *storageStub) DeleteSnapshot(_ context.Context, snapshot time.Time) e
 
 // nolint:unused
 // implements interface storage
-func (stub *storageStub) ListSnapshots(_ context.Context, prefix string, suffix string) ([]time.Time, error) {
+func (stub *storageStub) listSnapshots(_ context.Context, prefix string, suffix string) ([]time.Time, error) {
 	stub.listPrefix = prefix
 	stub.listSuffix = suffix
+
+	if stub.listFails {
+		return nil, errors.New("listing failed")
+	}
 
 	return stub.snapshots, nil
 }
 
 // nolint:unused
 // implements interface storage
-func (stub *storageStub) GetLastModifiedTime(snapshot time.Time) time.Time {
+func (stub *storageStub) getLastModifiedTime(snapshot time.Time) time.Time {
 	return snapshot
 }

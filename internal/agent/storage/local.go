@@ -20,17 +20,20 @@ type localStorageImpl struct {
 	path string
 }
 
-func createLocalStorageController(_ context.Context, config LocalStorageConfig) (*storageControllerImpl[os.FileInfo], error) {
+func (conf LocalStorageConfig) Destination() string {
+	return fmt.Sprintf("local path %s", conf.Path)
+}
+
+func (conf LocalStorageConfig) CreateController(context.Context) (StorageController, error) {
 	return newStorageController[os.FileInfo](
-		config.storageConfig,
-		fmt.Sprintf("local path %s", config.Path),
+		conf.storageConfig,
 		localStorageImpl{
-			path: config.Path,
+			path: conf.Path,
 		},
 	), nil
 }
 
-func (u localStorageImpl) UploadSnapshot(_ context.Context, name string, data io.Reader) error {
+func (u localStorageImpl) uploadSnapshot(_ context.Context, name string, data io.Reader) error {
 	fileName := fmt.Sprintf("%s/%s", u.path, name)
 
 	file, err := os.Create(fileName)
@@ -43,7 +46,7 @@ func (u localStorageImpl) UploadSnapshot(_ context.Context, name string, data io
 	return multierr.Append(err, file.Close())
 }
 
-func (u localStorageImpl) DeleteSnapshot(_ context.Context, snapshot os.FileInfo) error {
+func (u localStorageImpl) deleteSnapshot(_ context.Context, snapshot os.FileInfo) error {
 	if err := os.Remove(fmt.Sprintf("%s/%s", u.path, snapshot.Name())); err != nil {
 		return err
 	}
@@ -51,7 +54,7 @@ func (u localStorageImpl) DeleteSnapshot(_ context.Context, snapshot os.FileInfo
 	return nil
 }
 
-func (u localStorageImpl) ListSnapshots(_ context.Context, prefix string, ext string) ([]os.FileInfo, error) {
+func (u localStorageImpl) listSnapshots(_ context.Context, prefix string, ext string) ([]os.FileInfo, error) {
 	var snapshots []os.FileInfo
 
 	files, err := os.ReadDir(u.path)
@@ -72,6 +75,6 @@ func (u localStorageImpl) ListSnapshots(_ context.Context, prefix string, ext st
 	return snapshots, nil
 }
 
-func (u localStorageImpl) GetLastModifiedTime(snapshot os.FileInfo) time.Time {
+func (u localStorageImpl) getLastModifiedTime(snapshot os.FileInfo) time.Time {
 	return snapshot.ModTime()
 }

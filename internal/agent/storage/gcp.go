@@ -21,22 +21,25 @@ type gcpStorageImpl struct {
 	bucket *gcpStorage.BucketHandle
 }
 
-func createGCPStorageController(ctx context.Context, config GCPStorageConfig) (*storageControllerImpl[gcpStorage.ObjectAttrs], error) {
+func (conf GCPStorageConfig) Destination() string {
+	return fmt.Sprintf("gcp bucket %s", conf.Bucket)
+}
+
+func (conf GCPStorageConfig) CreateController(ctx context.Context) (StorageController, error) {
 	client, err := gcpStorage.NewClient(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	return newStorageController[gcpStorage.ObjectAttrs](
-		config.storageConfig,
-		fmt.Sprintf("gcp bucket %s", config.Bucket),
-		gcpStorageImpl{client.Bucket(config.Bucket)},
+		conf.storageConfig,
+		gcpStorageImpl{client.Bucket(conf.Bucket)},
 	), nil
 }
 
 // nolint:unused
 // implements interface storage
-func (u gcpStorageImpl) UploadSnapshot(ctx context.Context, name string, data io.Reader) error {
+func (u gcpStorageImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
 	obj := u.bucket.Object(name)
 	w := obj.NewWriter(ctx)
 
@@ -53,7 +56,7 @@ func (u gcpStorageImpl) UploadSnapshot(ctx context.Context, name string, data io
 
 // nolint:unused
 // implements interface storage
-func (u gcpStorageImpl) DeleteSnapshot(ctx context.Context, snapshot gcpStorage.ObjectAttrs) error {
+func (u gcpStorageImpl) deleteSnapshot(ctx context.Context, snapshot gcpStorage.ObjectAttrs) error {
 	obj := u.bucket.Object(snapshot.Name)
 	if err := obj.Delete(ctx); err != nil {
 		return err
@@ -64,7 +67,7 @@ func (u gcpStorageImpl) DeleteSnapshot(ctx context.Context, snapshot gcpStorage.
 
 // nolint:unused
 // implements interface storage
-func (u gcpStorageImpl) ListSnapshots(ctx context.Context, prefix string, _ string) ([]gcpStorage.ObjectAttrs, error) {
+func (u gcpStorageImpl) listSnapshots(ctx context.Context, prefix string, _ string) ([]gcpStorage.ObjectAttrs, error) {
 	var result []gcpStorage.ObjectAttrs
 
 	query := &gcpStorage.Query{Prefix: prefix}
@@ -86,6 +89,6 @@ func (u gcpStorageImpl) ListSnapshots(ctx context.Context, prefix string, _ stri
 
 // nolint:unused
 // implements interface storage
-func (u gcpStorageImpl) GetLastModifiedTime(snapshot gcpStorage.ObjectAttrs) time.Time {
+func (u gcpStorageImpl) getLastModifiedTime(snapshot gcpStorage.ObjectAttrs) time.Time {
 	return snapshot.Updated
 }

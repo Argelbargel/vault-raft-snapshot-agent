@@ -9,21 +9,26 @@ import (
 )
 
 // Manager manages the upload of a snapshot to one or multiple storage-locations
-// using storageController-instances configured by StoragesConfig
+// using StorageController-instances configured by StoragesConfig
 type Manager struct {
-	controllers []storageController
+	factories []StorageControllerFactory
 }
 
-// storageController defines the interface required by the Manager to communicate with storageControllerImpl-instances
-type storageController interface {
+type StorageControllerFactory interface {
+	// CreateController creates a new controller connection to a storage location
+	CreateController(context.Context) (StorageController, error)
 	// Destination returns information about the location of the controlled storage
 	Destination() string
+}
+
+// StorageController defines the interface required by the Manager to communicate with storageControllerImpl-instances
+type StorageController interface {
 	// ScheduleSnapshot schedules the next upload to the controlled storage.
 	// If the time of the last upload can not be determined by the controller,
 	// it may use the time of the last snapshot given as fallback
 	// For the case that the storageConfig of the controller does not specify one of its fields,
 	// StorageConfigDefaults is passed.
-	ScheduleSnapshot(ctx context.Context, lastSnapshot time.Time, defaults StorageConfigDefaults) time.Time
+	ScheduleSnapshot(ctx context.Context, lastSnapshot time.Time, defaults StorageConfigDefaults) (time.Time, error)
 	// UploadSnapshot uploads the given snapshot to the controlled storage, if the timestamp of the snapshot
 	// corresponds with its scheduled upload-date.
 	// For the case that the storageConfig of the controller does not specify one of its fields,
@@ -32,77 +37,63 @@ type storageController interface {
 	DeleteObsoleteSnapshots(ctx context.Context, defaults StorageConfigDefaults) (int, error)
 }
 
-// CreateManager creates a Manager controlling the storageController-instances
+// CreateManager creates a Manager controlling the StorageController-instances
 // configured according to the given StoragesConfig and StorageConfigDefaults
-func CreateManager(ctx context.Context, storageConfig StoragesConfig) (*Manager, error) {
+func CreateManager(storageConfig StoragesConfig) *Manager {
 	manager := &Manager{}
 
 	if !storageConfig.AWS.Empty {
-		aws, err := createAWSStorageController(ctx, storageConfig.AWS)
-		if err != nil {
-			return nil, err
-		}
-		manager.AddStorage(aws)
+		manager.AddStorageFactory(storageConfig.AWS)
 	}
 	if !storageConfig.Azure.Empty {
-		azure, err := createAzureStorageController(ctx, storageConfig.Azure)
-		if err != nil {
-			return nil, err
-		}
-		manager.AddStorage(azure)
+		manager.AddStorageFactory(storageConfig.Azure)
 	}
 	if !storageConfig.GCP.Empty {
-		gcp, err := createGCPStorageController(ctx, storageConfig.GCP)
-		if err != nil {
-			return nil, err
-		}
-		manager.AddStorage(gcp)
+		manager.AddStorageFactory(storageConfig.GCP)
 	}
 	if !storageConfig.Local.Empty {
-		local, err := createLocalStorageController(ctx, storageConfig.Local)
-		if err != nil {
-			return nil, err
-		}
-
-		manager.AddStorage(local)
+		manager.AddStorageFactory(storageConfig.Local)
 	}
 	if !storageConfig.Swift.Empty {
-		swift, err := createSwiftStorageController(ctx, storageConfig.Swift)
-		if err != nil {
-			return nil, err
-		}
-		manager.AddStorage(swift)
+		manager.AddStorageFactory(storageConfig.Swift)
 	}
 
-	return manager, nil
+	return manager
 }
 
-// AddStorage adds a storageController to the manager
-// Allows adding of storageController-implementations for testing
-func (m *Manager) AddStorage(controller storageController) {
-	m.controllers = append(m.controllers, controller)
+// AddStorageFactory adds a StorageController to the manager
+// Allows adding of StorageController-implementations for testing
+func (m *Manager) AddStorageFactory(factory StorageControllerFactory) {
+	m.factories = append(m.factories, factory)
 }
 
 // ScheduleSnapshot schedules the next snapshot.
-// Scheduling of snapshot is delegated to the storageController-instances; the earliest time calculated by all
-// controllers is returned. The given time when the last snapshot was taken is passed on to the controllers as fallback
+// Scheduling of snapshot is delegated to the StorageController-instances; the earliest time calculated by all
+// factories is returned. The given time when the last snapshot was taken is passed on to the factories as fallback
 // if the time of the last upload cannot be determined
 func (m *Manager) ScheduleSnapshot(ctx context.Context, lastSnapshotTime time.Time, defaults StorageConfigDefaults) time.Time {
 	nextSnapshot := time.Time{}
 
-	for _, controller := range m.controllers {
-		candidate := controller.ScheduleSnapshot(ctx, lastSnapshotTime, defaults)
-		if nextSnapshot.IsZero() || candidate.Before(nextSnapshot) {
-			nextSnapshot = candidate
+	for _, factory := range m.factories {
+		controller, err := factory.CreateController(ctx)
+		if err != nil {
+			logging.Warn("Could not create controller", "destination", factory.Destination(), "error", err)
+		} else {
+			candidate, err := controller.ScheduleSnapshot(ctx, lastSnapshotTime, defaults)
+			if err != nil {
+				logging.Warn("Could not schedule snapshot", "destination", factory.Destination(), "error", err)
+			} else if nextSnapshot.IsZero() || candidate.Before(nextSnapshot) {
+				nextSnapshot = candidate
+			}
 		}
 	}
 
 	return nextSnapshot
 }
 
-// UploadSnapshot uploads the given snapshot to all storages controlled by the storageController-instances
+// UploadSnapshot uploads the given snapshot to all storages controlled by the StorageController-instances
 // and returns the time the next snapshot should be taken.
-// Whether the snapshot is actually uploaded to a storage is controlled by the storageController based
+// Whether the snapshot is actually uploaded to a storage is controlled by the StorageController based
 // on the upload-frequency in its StoragesConfig
 func (m *Manager) UploadSnapshot(ctx context.Context, snapshot io.ReadSeeker, timestamp time.Time, defaults StorageConfigDefaults) time.Time {
 	var (
@@ -110,30 +101,36 @@ func (m *Manager) UploadSnapshot(ctx context.Context, snapshot io.ReadSeeker, ti
 		errs         error
 	)
 
-	for _, controller := range m.controllers {
+	for _, factory := range m.factories {
 		if _, err := snapshot.Seek(0, io.SeekStart); err != nil {
 			logging.Error("Could not reset snapshot before uploading", "error", err)
 			return timestamp.Add(defaults.Frequency)
 		}
 
-		uploaded, candidate, err := controller.UploadSnapshot(ctx, snapshot, timestamp, defaults)
-		if nextSnapshot.IsZero() || candidate.Before(nextSnapshot) {
-			nextSnapshot = candidate
-		}
-
+		controller, err := factory.CreateController(ctx)
 		if err != nil {
-			logging.Warn("Could not upload snapshot", "destination", controller.Destination(), "error", err, "nextSnapshot", candidate)
+			logging.Warn("Could not create storage-controller", "destination", factory.Destination(), "error", err)
 			errs = multierr.Append(errs, err)
-		} else if !uploaded {
-			logging.Debug("Skipped upload of snapshot", "destination", controller.Destination(), "nextSnapshot", candidate)
 		} else {
-			logging.Debug("Successfully uploaded snapshot", "destination", controller.Destination(), "nextSnapshot", candidate)
+			uploaded, candidate, err := controller.UploadSnapshot(ctx, snapshot, timestamp, defaults)
+			if nextSnapshot.IsZero() || candidate.Before(nextSnapshot) {
+				nextSnapshot = candidate
+			}
 
-			deleted, err := controller.DeleteObsoleteSnapshots(ctx, defaults)
 			if err != nil {
-				logging.Warn("Could not delete obsolete snapshots", "destination", controller.Destination(), "error", err)
-			} else if deleted > 0 {
-				logging.Debug("Deleted obsolete snapshots", "destination", controller.Destination(), "deleted", deleted)
+				logging.Warn("Could not upload snapshot", "destination", factory.Destination(), "error", err, "nextSnapshot", candidate)
+				errs = multierr.Append(errs, err)
+			} else if !uploaded {
+				logging.Debug("Skipped upload of snapshot", "destination", factory.Destination(), "nextSnapshot", candidate)
+			} else {
+				logging.Debug("Successfully uploaded snapshot", "destination", factory.Destination(), "nextSnapshot", candidate)
+
+				deleted, err := controller.DeleteObsoleteSnapshots(ctx, defaults)
+				if err != nil {
+					logging.Warn("Could not delete obsolete snapshots", "destination", factory.Destination(), "error", err)
+				} else if deleted > 0 {
+					logging.Debug("Deleted obsolete snapshots", "destination", factory.Destination(), "deleted", deleted)
+				}
 			}
 		}
 	}

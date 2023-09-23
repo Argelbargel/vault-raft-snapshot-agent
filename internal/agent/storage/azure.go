@@ -25,17 +25,21 @@ type azureStorageImpl struct {
 	container string
 }
 
-func createAzureStorageController(_ context.Context, config AzureStorageConfig) (*storageControllerImpl[*container.BlobItem], error) {
-	client, err := createAzBlobClient(config)
+func (conf AzureStorageConfig) Destination() string {
+	return fmt.Sprintf("azure container %s at %s", conf.Container, conf.CloudDomain)
+}
+
+func (conf AzureStorageConfig) CreateController(context.Context) (StorageController, error) {
+	client, err := createAzBlobClient(conf)
 	if err != nil {
 		return nil, err
 	}
 
 	return newStorageController[*container.BlobItem](
-		config.storageConfig,
-		fmt.Sprintf("azure container %s at %s", config.Container, config.CloudDomain),
-		azureStorageImpl{client, config.Container},
+		conf.storageConfig,
+		azureStorageImpl{client, conf.Container},
 	), nil
+
 }
 
 func createAzBlobClient(config AzureStorageConfig) (*azblob.Client, error) {
@@ -60,13 +64,13 @@ func createAzBlobClient(config AzureStorageConfig) (*azblob.Client, error) {
 
 // nolint:unused
 // implements interface storage
-func (u azureStorageImpl) UploadSnapshot(ctx context.Context, name string, data io.Reader) error {
+func (s azureStorageImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
 	uploadOptions := &azblob.UploadStreamOptions{
 		BlockSize:   4 * 1024 * 1024,
 		Concurrency: 16,
 	}
 
-	if _, err := u.client.UploadStream(ctx, u.container, name, data, uploadOptions); err != nil {
+	if _, err := s.client.UploadStream(ctx, s.container, name, data, uploadOptions); err != nil {
 		return err
 	}
 
@@ -75,8 +79,8 @@ func (u azureStorageImpl) UploadSnapshot(ctx context.Context, name string, data 
 
 // nolint:unused
 // implements interface storage
-func (u azureStorageImpl) DeleteSnapshot(ctx context.Context, snapshot *container.BlobItem) error {
-	if _, err := u.client.DeleteBlob(ctx, u.container, *snapshot.Name, nil); err != nil {
+func (s azureStorageImpl) deleteSnapshot(ctx context.Context, snapshot *container.BlobItem) error {
+	if _, err := s.client.DeleteBlob(ctx, s.container, *snapshot.Name, nil); err != nil {
 		return err
 	}
 
@@ -85,12 +89,12 @@ func (u azureStorageImpl) DeleteSnapshot(ctx context.Context, snapshot *containe
 
 // nolint:unused
 // implements interface storage
-func (u azureStorageImpl) ListSnapshots(ctx context.Context, prefix string, _ string) ([]*container.BlobItem, error) {
+func (s azureStorageImpl) listSnapshots(ctx context.Context, prefix string, _ string) ([]*container.BlobItem, error) {
 	var results []*container.BlobItem
 
 	var maxResults int32 = 500
 
-	pager := u.client.NewListBlobsFlatPager(u.container, &azblob.ListBlobsFlatOptions{
+	pager := s.client.NewListBlobsFlatPager(s.container, &azblob.ListBlobsFlatOptions{
 		Prefix:     &prefix,
 		MaxResults: &maxResults,
 	})
@@ -110,6 +114,6 @@ func (u azureStorageImpl) ListSnapshots(ctx context.Context, prefix string, _ st
 
 // nolint:unused
 // implements interface storage
-func (u azureStorageImpl) GetLastModifiedTime(snapshot *container.BlobItem) time.Time {
+func (s azureStorageImpl) getLastModifiedTime(snapshot *container.BlobItem) time.Time {
 	return *snapshot.Properties.LastModified
 }

@@ -27,16 +27,19 @@ type swiftStorageImpl struct {
 	container string
 }
 
-func createSwiftStorageController(ctx context.Context, config SwiftStorageConfig) (*storageControllerImpl[swift.Object], error) {
-	conn, err := createSwiftConnection(ctx, config)
+func (conf SwiftStorageConfig) Destination() string {
+	return fmt.Sprintf("swift container %s", conf.Container)
+}
+
+func (conf SwiftStorageConfig) CreateController(ctx context.Context) (StorageController, error) {
+	conn, err := createSwiftConnection(ctx, conf)
 	if err != nil {
 		return nil, err
 	}
 
 	return newStorageController[swift.Object](
-		config.storageConfig,
-		fmt.Sprintf("swift container %s", config.Container),
-		swiftStorageImpl{conn, config.Container},
+		conf.storageConfig,
+		swiftStorageImpl{conn, conf.Container},
 	), nil
 }
 
@@ -79,7 +82,7 @@ func createSwiftConnection(ctx context.Context, config SwiftStorageConfig) (*swi
 
 // nolint:unused
 // implements interface storage
-func (u swiftStorageImpl) UploadSnapshot(ctx context.Context, name string, data io.Reader) error {
+func (u swiftStorageImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
 	_, header, err := u.conn.Container(ctx, u.container)
 	if err != nil {
 		return err
@@ -103,7 +106,7 @@ func (u swiftStorageImpl) UploadSnapshot(ctx context.Context, name string, data 
 
 // nolint:unused
 // implements interface storage
-func (u swiftStorageImpl) DeleteSnapshot(ctx context.Context, snapshot swift.Object) error {
+func (u swiftStorageImpl) deleteSnapshot(ctx context.Context, snapshot swift.Object) error {
 	if err := u.conn.ObjectDelete(ctx, u.container, snapshot.Name); err != nil {
 		return err
 	}
@@ -113,12 +116,12 @@ func (u swiftStorageImpl) DeleteSnapshot(ctx context.Context, snapshot swift.Obj
 
 // nolint:unused
 // implements interface storage
-func (u swiftStorageImpl) ListSnapshots(ctx context.Context, prefix string, _ string) ([]swift.Object, error) {
+func (u swiftStorageImpl) listSnapshots(ctx context.Context, prefix string, _ string) ([]swift.Object, error) {
 	return u.conn.ObjectsAll(ctx, u.container, &swift.ObjectsOpts{Prefix: prefix})
 }
 
 // nolint:unused
 // implements interface storage
-func (u swiftStorageImpl) GetLastModifiedTime(snapshot swift.Object) time.Time {
+func (u swiftStorageImpl) getLastModifiedTime(snapshot swift.Object) time.Time {
 	return snapshot.LastModified
 }
