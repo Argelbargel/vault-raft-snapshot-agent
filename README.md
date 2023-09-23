@@ -138,10 +138,10 @@ snapshots:
   frequency: "4h"
   # configures how many snapshots are retained, default 0
   retain: 10
-uploaders:
-  # configures local storage of snapshots
-  local:
-    path: /snapshots
+  storages:
+    # configures local storage of snapshots
+    local:
+      path: /snapshots
 ```
 
 (for a complete example with all configuration-options see [complete.yaml](./testdata/complete.yaml))
