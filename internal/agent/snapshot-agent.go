@@ -132,40 +132,41 @@ func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Timer {
 
 	a.lastSnapshotTime = time.Now()
 	// ensure that we do not hammer on vault in case of errors
-	a.updateTimer(a.lastSnapshotTime.Add(a.storageConfigDefaults.Frequency))
+	nextSnapshot := a.lastSnapshotTime.Add(a.storageConfigDefaults.Frequency)
+	a.updateTimer(nextSnapshot)
 
 	snapshot, err := os.CreateTemp(a.tempDir, "snapshot")
 	if err != nil {
-		logging.Warn("Could not create snapshot-temp-file", "file", "error", err)
+		logging.Warn("Could not create snapshot-temp-file", "nextSnapshot", nextSnapshot, "error", err)
 		return a.snapshotTimer
 	}
 
 	defer func() {
 		if err := snapshot.Close(); err != nil {
-			logging.Warn("Could not close snapshot-temp-file", "file", snapshot.Name(), "error", err)
+			logging.Warn("Could not close snapshot-temp-file", "file", snapshot.Name(), "nextSnapshot", nextSnapshot, "error", err)
 		} else if err := os.Remove(snapshot.Name()); err != nil {
-			logging.Warn("Could not remove snapshot-temp-file %a: %a", "file", snapshot.Name(), "error", err)
+			logging.Warn("Could not remove snapshot-temp-file %a: %a", "file", snapshot.Name(), "nextSnapshot", nextSnapshot, "error", err)
 		}
 	}()
 
 	err = a.client.TakeSnapshot(ctx, snapshot)
 	if err != nil {
-		logging.Error("Could not take snapshot of vault", "error", err)
+		logging.Error("Could not take snapshot of vault", "nextSnapshot", nextSnapshot, "error", err)
 		return a.snapshotTimer
 	}
 
 	info, err := snapshot.Stat()
 	if err != nil {
-		logging.Error("Could not stat snapshot-temp-file", "file", snapshot.Name(), "error", err)
+		logging.Error("Could not stat snapshot-temp-file", "file", snapshot.Name(), "nextSnapshot", nextSnapshot, "error", err)
 		return a.snapshotTimer
 	}
 
 	if info.Size() < 1 {
-		logging.Warn("Ignoring empty snapshot", "file", snapshot.Name())
+		logging.Warn("Ignoring empty snapshot", "file", snapshot.Name(), "nextSnapshot", nextSnapshot)
 		return a.snapshotTimer
 	}
 
-	nextSnapshot := a.manager.UploadSnapshot(ctx, snapshot, a.lastSnapshotTime, a.storageConfigDefaults)
+	nextSnapshot = a.manager.UploadSnapshot(ctx, snapshot, a.lastSnapshotTime, a.storageConfigDefaults)
 	return a.updateTimer(nextSnapshot)
 }
 

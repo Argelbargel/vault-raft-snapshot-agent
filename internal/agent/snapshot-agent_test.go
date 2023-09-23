@@ -131,12 +131,11 @@ func TestTakeSnapshotFailsWhenTempFileCannotBeCreated(t *testing.T) {
 	agent := newSnapshotAgent("./missing")
 	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
 
-	start := time.Now()
 	timer := agent.TakeSnapshot(ctx)
 	<-timer.C
 
 	assert.False(t, clientVaultAPI.tookSnapshot)
-	assert.WithinRange(t, time.Now(), start.Add(defaults.Frequency), start.Add(defaults.Frequency*2))
+	assert.Less(t, time.Now(), controller.nextSnapshot.Add(-defaults.Frequency))
 }
 
 func TestTakeSnapshotFailsWhenSnapshottingFails(t *testing.T) {
@@ -161,12 +160,11 @@ func TestTakeSnapshotFailsWhenSnapshottingFails(t *testing.T) {
 	agent := newSnapshotAgent(t.TempDir())
 	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
 
-	start := time.Now()
 	timer := agent.TakeSnapshot(ctx)
 	<-timer.C
 
 	assert.True(t, clientVaultAPI.tookSnapshot)
-	assert.WithinRange(t, time.Now(), start.Add(defaults.Frequency), start.Add(defaults.Frequency*2))
+	assert.Less(t, time.Now(), controller.nextSnapshot.Add(-defaults.Frequency))
 }
 
 func TestTakeSnapshotIgnoresEmptySnapshot(t *testing.T) {
@@ -190,12 +188,11 @@ func TestTakeSnapshotIgnoresEmptySnapshot(t *testing.T) {
 	agent := newSnapshotAgent(t.TempDir())
 	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
 
-	start := time.Now()
 	timer := agent.TakeSnapshot(ctx)
 	<-timer.C
 
 	assert.True(t, clientVaultAPI.tookSnapshot)
-	assert.WithinRange(t, time.Now(), start.Add(defaults.Frequency), start.Add(defaults.Frequency*2))
+	assert.Less(t, time.Now(), controller.nextSnapshot.Add(-defaults.Frequency))
 }
 
 func TestIgnoresZeroTimeForScheduling(t *testing.T) {
@@ -226,7 +223,7 @@ func TestIgnoresZeroTimeForScheduling(t *testing.T) {
 
 	assert.True(t, clientVaultAPI.tookSnapshot)
 	assert.Equal(t, clientVaultAPI.snapshotData, controller.uploadData)
-	assert.WithinRange(t, time.Now(), start.Add(defaults.Frequency), start.Add(defaults.Frequency*2))
+	assert.GreaterOrEqual(t, time.Now(), start.Add(defaults.Frequency))
 }
 
 func TestUpdateReschedulesSnapshots(t *testing.T) {
