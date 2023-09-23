@@ -18,23 +18,23 @@ type ClientConfig struct {
 }
 
 // Client is the public implementation of the client communicating with vault to authenticate and take snapshots
-type Client[C any, A clientVaultAPIAuth[C]] struct {
-	api            clientVaultAPI[C, A]
-	auth           A
+type Client[CLI any, AUTH clientVaultAPIAuth[CLI]] struct {
+	api            clientVaultAPI[CLI, AUTH]
+	auth           AUTH
 	authExpiration time.Time
 }
 
 // internal definition of vault-api used by Client
-type clientVaultAPI[C any, A clientVaultAPIAuth[C]] interface {
+type clientVaultAPI[CLI any, AUTH clientVaultAPIAuth[CLI]] interface {
 	Address() string
-	TakeSnapshot(ctx context.Context, writer io.Writer) error
 	IsLeader() (bool, error)
-	RefreshAuth(ctx context.Context, auth A) (time.Duration, error)
+	TakeSnapshot(context.Context, io.Writer) error
+	RefreshAuth(context.Context, AUTH) (time.Duration, error)
 }
 
 // internal definition of vault-api used for authentication
-type clientVaultAPIAuth[C any] interface {
-	Login(ctx context.Context, client C) (time.Duration, error)
+type clientVaultAPIAuth[CLI any] interface {
+	Login(context.Context, CLI) (time.Duration, error)
 }
 
 // internal implementation of the vault-api using a real vault-api-client
@@ -59,11 +59,11 @@ func CreateClient(config ClientConfig) (*Client[*api.Client, clientVaultAPIAuth[
 
 // NewClient creates a Client using the given api-implementation and auth
 // this function should only be used in tests!
-func NewClient[C any, A clientVaultAPIAuth[C]](api clientVaultAPI[C, A], auth A, tokenExpiration time.Time) *Client[C, A] {
-	return &Client[C, A]{api, auth, tokenExpiration}
+func NewClient[CLI any, AUTH clientVaultAPIAuth[CLI]](api clientVaultAPI[CLI, AUTH], auth AUTH, tokenExpiration time.Time) *Client[CLI, AUTH] {
+	return &Client[CLI, AUTH]{api, auth, tokenExpiration}
 }
 
-func (c *Client[C, A]) TakeSnapshot(ctx context.Context, writer io.Writer) error {
+func (c *Client[CLI, AUTH]) TakeSnapshot(ctx context.Context, writer io.Writer) error {
 	if err := c.refreshAuth(ctx); err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (c *Client[C, A]) TakeSnapshot(ctx context.Context, writer io.Writer) error
 	return c.api.TakeSnapshot(ctx, writer)
 }
 
-func (c *Client[C, A]) refreshAuth(ctx context.Context) error {
+func (c *Client[CLI, AUTH]) refreshAuth(ctx context.Context) error {
 	if c.authExpiration.Before(time.Now()) {
 		leaseDuration, err := c.api.RefreshAuth(ctx, c.auth)
 		if err != nil {

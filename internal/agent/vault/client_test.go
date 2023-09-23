@@ -156,7 +156,7 @@ type clientVaultAPIAuthStub struct {
 	refreshed     bool
 }
 
-func (a *clientVaultAPIAuthStub) Login(_ context.Context, _ any) (time.Duration, error) {
+func (a *clientVaultAPIAuthStub) Login(context.Context, any) (time.Duration, error) {
 	a.refreshed = true
 	var err error
 	if a.leaseDuration <= 0 {
