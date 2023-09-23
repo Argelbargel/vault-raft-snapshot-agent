@@ -71,7 +71,7 @@ daemon runs on the leader's host or not.
 
 ## Command-Line Options and Logging
 
-Most of the agents' configuration is done via it's [configuration-file or environment variables](#configuration).
+Most of the agents' configuration is done via its [configuration-file or environment variables](#configuration).
 The location of a custom configuration-file and logging are specified via the command-line:
 
 | Long option             | Short option  | Description                                                                                                                                                                 |
