@@ -13,7 +13,7 @@ type StoragesConfig struct {
 	Swift SwiftStorageConfig `default:"{\"Empty\": true}"`
 }
 
-// StorageConfigDefaults specified the default values of storageConfig for all controllers
+// StorageConfigDefaults specified the default values of storageConfig for all factories
 type StorageConfigDefaults struct {
 	Frequency       time.Duration `default:"1h"`
 	Retain          int
@@ -34,42 +34,42 @@ type storageConfig struct {
 	TimestampFormat string
 }
 
-func (c storageConfig) FrequencyOrDefault(defaults StorageConfigDefaults) time.Duration {
+func (c storageConfig) frequencyOrDefault(defaults StorageConfigDefaults) time.Duration {
 	if c.Frequency > 0 {
 		return c.Frequency
 	}
 	return defaults.Frequency
 }
 
-func (c storageConfig) RetainOrDefault(defaults StorageConfigDefaults) int {
+func (c storageConfig) retainOrDefault(defaults StorageConfigDefaults) int {
 	if c.Retain >= 0 {
 		return c.Retain
 	}
 	return defaults.Retain
 }
 
-func (c storageConfig) TimeoutOrDefault(defaults StorageConfigDefaults) time.Duration {
+func (c storageConfig) timeoutOrDefault(defaults StorageConfigDefaults) time.Duration {
 	if c.Timeout > 0 {
 		return c.Timeout
 	}
 	return defaults.Timeout
 }
 
-func (c storageConfig) NamePrefixOrDefault(defaults StorageConfigDefaults) string {
+func (c storageConfig) namePrefixOrDefault(defaults StorageConfigDefaults) string {
 	if c.NamePrefix != "" {
 		return c.NamePrefix
 	}
 	return defaults.NamePrefix
 }
 
-func (c storageConfig) NameSuffixOrDefault(defaults StorageConfigDefaults) string {
+func (c storageConfig) nameSuffixOrDefault(defaults StorageConfigDefaults) string {
 	if c.NameSuffix != "" {
 		return c.NameSuffix
 	}
 	return defaults.NameSuffix
 }
 
-func (c storageConfig) TimestampFormatOrDefault(defaults StorageConfigDefaults) string {
+func (c storageConfig) timestampFormatOrDefault(defaults StorageConfigDefaults) string {
 	if c.TimestampFormat != "" {
 		return c.TimestampFormat
 	}

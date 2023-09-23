@@ -13,15 +13,42 @@ import (
 func TestManagerSchedulesEarliestNextSnapshot(t *testing.T) {
 	controller1 := &storageControllerStub{nextSnapshot: time.Now().Add(time.Millisecond * 2)}
 	controller2 := &storageControllerStub{nextSnapshot: time.Now().Add(time.Millisecond)}
-	manager := Manager{[]storageController{controller1, controller2}}
+	manager := Manager{
+		[]StorageControllerFactory{
+			storageControllerFactoryStub{controller: controller1},
+			storageControllerFactoryStub{controller: controller2},
+		},
+	}
 
 	assert.Equal(t, controller2.nextSnapshot, manager.ScheduleSnapshot(context.Background(), controller1.nextSnapshot, StorageConfigDefaults{}))
+}
+
+func TestScheduleSnapshotIgnoresFactoryAndControllerFailure(t *testing.T) {
+	controller1 := &storageControllerStub{scheduleFails: true}
+	controller2 := &storageControllerStub{nextSnapshot: time.Now().Add(time.Millisecond)}
+	manager := Manager{
+		[]StorageControllerFactory{
+			storageControllerFactoryStub{createFails: true},
+			storageControllerFactoryStub{controller: controller1},
+			storageControllerFactoryStub{controller: controller2},
+		},
+	}
+
+	defaults := StorageConfigDefaults{}
+	nextSnapshot := manager.ScheduleSnapshot(context.Background(), time.Time{}, defaults)
+
+	assert.Equal(t, controller2.nextSnapshot, nextSnapshot)
 }
 
 func TestManagerUploadsToAllControllers(t *testing.T) {
 	controller1 := &storageControllerStub{nextSnapshot: time.Now().Add(time.Millisecond * 2)}
 	controller2 := &storageControllerStub{nextSnapshot: time.Now().Add(time.Millisecond)}
-	manager := Manager{[]storageController{controller1, controller2}}
+	manager := Manager{
+		[]StorageControllerFactory{
+			storageControllerFactoryStub{controller: controller1},
+			storageControllerFactoryStub{controller: controller2},
+		},
+	}
 
 	data := "test"
 	nextSnapshot := manager.UploadSnapshot(context.Background(), strings.NewReader(data), controller1.nextSnapshot, StorageConfigDefaults{})
@@ -36,7 +63,12 @@ func TestManagerUploadsToAllControllers(t *testing.T) {
 func TestManagerDeletesObsoleteSnapshotsWithAllControllers(t *testing.T) {
 	controller1 := &storageControllerStub{}
 	controller2 := &storageControllerStub{}
-	manager := Manager{[]storageController{controller1, controller2}}
+	manager := Manager{
+		[]StorageControllerFactory{
+			storageControllerFactoryStub{controller: controller1},
+			storageControllerFactoryStub{controller: controller2},
+		},
+	}
 
 	defaults := StorageConfigDefaults{Retain: 2}
 	_ = manager.UploadSnapshot(context.Background(), strings.NewReader("test"), controller1.nextSnapshot, defaults)
@@ -45,12 +77,18 @@ func TestManagerDeletesObsoleteSnapshotsWithAllControllers(t *testing.T) {
 	assert.Equal(t, defaults, controller2.deleteDefaults)
 }
 
-func TestManagerIgnoresControllerFailures(t *testing.T) {
+func TestManagerIgnoresFactoryAndControllerFailure(t *testing.T) {
 	controller1 := &storageControllerStub{uploadFails: true, nextSnapshot: time.Now().Add(time.Millisecond)}
 	controller2 := &storageControllerStub{deleteFails: true, nextSnapshot: time.Now().Add(time.Millisecond * 2)}
 	controller3 := &storageControllerStub{nextSnapshot: time.Now().Add(time.Millisecond * 3)}
-
-	manager := Manager{[]storageController{controller1, controller2, controller3}}
+	manager := Manager{
+		[]StorageControllerFactory{
+			storageControllerFactoryStub{createFails: true},
+			storageControllerFactoryStub{controller: controller1},
+			storageControllerFactoryStub{controller: controller2},
+			storageControllerFactoryStub{controller: controller3},
+		},
+	}
 
 	data := "test"
 	defaults := StorageConfigDefaults{}
@@ -69,7 +107,12 @@ func TestManagerIgnoresControllerFailures(t *testing.T) {
 func TestManagerIgnoresSkippedControllers(t *testing.T) {
 	controller1 := &storageControllerStub{nextSnapshot: time.Now().Add(time.Millisecond * 2)}
 	controller2 := &storageControllerStub{nextSnapshot: time.Now().Add(time.Millisecond)}
-	manager := Manager{[]storageController{controller1, controller2}}
+	manager := Manager{
+		[]StorageControllerFactory{
+			storageControllerFactoryStub{controller: controller1},
+			storageControllerFactoryStub{controller: controller2},
+		},
+	}
 
 	data := "test"
 	nextSnapshot := manager.UploadSnapshot(context.Background(), strings.NewReader(data), controller2.nextSnapshot, StorageConfigDefaults{})
@@ -81,7 +124,11 @@ func TestManagerIgnoresSkippedControllers(t *testing.T) {
 
 func TestManagerFailsIfSnapshotCannotBeReset(t *testing.T) {
 	controller := &storageControllerStub{}
-	manager := Manager{[]storageController{controller}}
+	manager := Manager{
+		[]StorageControllerFactory{
+			storageControllerFactoryStub{controller: controller},
+		},
+	}
 
 	defaults := StorageConfigDefaults{Frequency: time.Second}
 	timestamp := time.Now()
@@ -91,8 +138,25 @@ func TestManagerFailsIfSnapshotCannotBeReset(t *testing.T) {
 	assert.Zero(t, controller.uploadData)
 }
 
+type storageControllerFactoryStub struct {
+	createFails bool
+	controller  *storageControllerStub
+}
+
+func (stub storageControllerFactoryStub) Destination() string {
+	return ""
+}
+
+func (stub storageControllerFactoryStub) CreateController(context.Context) (StorageController, error) {
+	if stub.createFails {
+		return nil, errors.New("create failed")
+	}
+	return stub.controller, nil
+}
+
 type storageControllerStub struct {
 	uploadDefaults    StorageConfigDefaults
+	scheduleFails     bool
 	uploadData        string
 	uploadFails       bool
 	deleteFails       bool
@@ -101,12 +165,11 @@ type storageControllerStub struct {
 	nextSnapshot      time.Time
 }
 
-func (stub *storageControllerStub) Destination() string {
-	return ""
-}
-
-func (stub *storageControllerStub) ScheduleSnapshot(context.Context, time.Time, StorageConfigDefaults) time.Time {
-	return stub.nextSnapshot
+func (stub *storageControllerStub) ScheduleSnapshot(context.Context, time.Time, StorageConfigDefaults) (time.Time, error) {
+	if stub.scheduleFails {
+		return time.Time{}, errors.New("scheduling failed")
+	}
+	return stub.nextSnapshot, nil
 }
 
 func (stub *storageControllerStub) UploadSnapshot(_ context.Context, snapshot io.Reader, timestamp time.Time, defaults StorageConfigDefaults) (bool, time.Time, error) {

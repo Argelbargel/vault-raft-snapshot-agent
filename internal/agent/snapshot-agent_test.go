@@ -22,12 +22,10 @@ func TestTakeSnapshotUploadsSnapshot(t *testing.T) {
 		Frequency: time.Millisecond,
 	}
 
-	controller := &storageControllerStub{
-		nextSnapshot: time.Now().Add(time.Millisecond * 250),
-	}
+	factory := &storageControllerFactoryStub{nextSnapshot: time.Now().Add(time.Millisecond * 250)}
 
 	manager := &storage.Manager{}
-	manager.AddStorage(controller)
+	manager.AddStorageFactory(factory)
 
 	ctx := context.Background()
 
@@ -39,10 +37,10 @@ func TestTakeSnapshotUploadsSnapshot(t *testing.T) {
 	<-timer.C
 
 	assert.True(t, clientVaultAPI.tookSnapshot)
-	assert.Equal(t, clientVaultAPI.snapshotData, controller.uploadData)
-	assert.Equal(t, defaults, controller.defaults)
-	assert.WithinRange(t, controller.snapshotTimestamp, start, start.Add(50*time.Millisecond))
-	assert.GreaterOrEqual(t, time.Now(), controller.nextSnapshot)
+	assert.Equal(t, clientVaultAPI.snapshotData, factory.uploadData)
+	assert.Equal(t, defaults, factory.defaults)
+	assert.WithinRange(t, factory.snapshotTimestamp, start, start.Add(50*time.Millisecond))
+	assert.GreaterOrEqual(t, time.Now(), factory.nextSnapshot)
 }
 
 func TestTakeSnapshotLocksTakeSnapshot(t *testing.T) {
@@ -119,12 +117,12 @@ func TestTakeSnapshotFailsWhenTempFileCannotBeCreated(t *testing.T) {
 		Frequency: time.Millisecond * 150,
 	}
 
-	controller := &storageControllerStub{
+	factory := &storageControllerFactoryStub{
 		nextSnapshot: time.Now().Add(defaults.Frequency * 4),
 	}
 
 	manager := &storage.Manager{}
-	manager.AddStorage(controller)
+	manager.AddStorageFactory(factory)
 
 	ctx := context.Background()
 
@@ -135,7 +133,7 @@ func TestTakeSnapshotFailsWhenTempFileCannotBeCreated(t *testing.T) {
 	<-timer.C
 
 	assert.False(t, clientVaultAPI.tookSnapshot)
-	assert.Less(t, time.Now(), controller.nextSnapshot.Add(-defaults.Frequency))
+	assert.Less(t, time.Now(), factory.nextSnapshot.Add(-defaults.Frequency))
 }
 
 func TestTakeSnapshotFailsWhenSnapshottingFails(t *testing.T) {
@@ -148,12 +146,12 @@ func TestTakeSnapshotFailsWhenSnapshottingFails(t *testing.T) {
 		Frequency: time.Millisecond * 150,
 	}
 
-	controller := &storageControllerStub{
+	factory := &storageControllerFactoryStub{
 		nextSnapshot: time.Now().Add(defaults.Frequency * 4),
 	}
 
 	manager := &storage.Manager{}
-	manager.AddStorage(controller)
+	manager.AddStorageFactory(factory)
 
 	ctx := context.Background()
 
@@ -164,7 +162,7 @@ func TestTakeSnapshotFailsWhenSnapshottingFails(t *testing.T) {
 	<-timer.C
 
 	assert.True(t, clientVaultAPI.tookSnapshot)
-	assert.Less(t, time.Now(), controller.nextSnapshot.Add(-defaults.Frequency))
+	assert.Less(t, time.Now(), factory.nextSnapshot.Add(-defaults.Frequency))
 }
 
 func TestTakeSnapshotIgnoresEmptySnapshot(t *testing.T) {
@@ -176,12 +174,12 @@ func TestTakeSnapshotIgnoresEmptySnapshot(t *testing.T) {
 		Frequency: time.Millisecond * 150,
 	}
 
-	controller := &storageControllerStub{
+	factory := &storageControllerFactoryStub{
 		nextSnapshot: time.Now().Add(defaults.Frequency * 4),
 	}
 
 	manager := &storage.Manager{}
-	manager.AddStorage(controller)
+	manager.AddStorageFactory(factory)
 
 	ctx := context.Background()
 
@@ -192,7 +190,7 @@ func TestTakeSnapshotIgnoresEmptySnapshot(t *testing.T) {
 	<-timer.C
 
 	assert.True(t, clientVaultAPI.tookSnapshot)
-	assert.Less(t, time.Now(), controller.nextSnapshot.Add(-defaults.Frequency))
+	assert.Less(t, time.Now(), factory.nextSnapshot.Add(-defaults.Frequency))
 }
 
 func TestIgnoresZeroTimeForScheduling(t *testing.T) {
@@ -205,12 +203,12 @@ func TestIgnoresZeroTimeForScheduling(t *testing.T) {
 		Frequency: time.Millisecond * 150,
 	}
 
-	controller := &storageControllerStub{
+	factory := &storageControllerFactoryStub{
 		nextSnapshot: time.Time{},
 	}
 
 	manager := &storage.Manager{}
-	manager.AddStorage(controller)
+	manager.AddStorageFactory(factory)
 
 	ctx := context.Background()
 
@@ -222,7 +220,7 @@ func TestIgnoresZeroTimeForScheduling(t *testing.T) {
 	<-timer.C
 
 	assert.True(t, clientVaultAPI.tookSnapshot)
-	assert.Equal(t, clientVaultAPI.snapshotData, controller.uploadData)
+	assert.Equal(t, clientVaultAPI.snapshotData, factory.uploadData)
 	assert.GreaterOrEqual(t, time.Now(), start.Add(defaults.Frequency))
 }
 
@@ -233,24 +231,29 @@ func TestUpdateReschedulesSnapshots(t *testing.T) {
 	}
 
 	manager := &storage.Manager{}
-	manager.AddStorage(&storageControllerStub{nextSnapshot: time.Now().Add(time.Millisecond * 250)})
+	factory := &storageControllerFactoryStub{nextSnapshot: time.Now().Add(time.Millisecond * 250)}
+	manager.AddStorageFactory(factory)
 
-	newController := &storageControllerStub{nextSnapshot: time.Now().Add(time.Millisecond * 500)}
+	newFactory := &storageControllerFactoryStub{nextSnapshot: time.Now().Add(time.Millisecond * 500)}
 	newManager := &storage.Manager{}
-	newManager.AddStorage(newController)
+	newManager.AddStorageFactory(newFactory)
 
 	ctx := context.Background()
 	agent := newSnapshotAgent(t.TempDir())
-	agent.update(ctx, newClient(clientVaultAPI), manager, storage.StorageConfigDefaults{})
+	client := newClient(clientVaultAPI)
+	agent.update(ctx, client, manager, storage.StorageConfigDefaults{})
 	timer := agent.TakeSnapshot(ctx)
 
+	updated := make(chan bool, 1)
 	go func() {
-		agent.update(ctx, newClient(clientVaultAPI), newManager, storage.StorageConfigDefaults{})
+		agent.update(ctx, client, newManager, storage.StorageConfigDefaults{})
+		updated <- true
 	}()
 
+	<-updated
 	<-timer.C
 
-	assert.GreaterOrEqual(t, time.Now(), newController.nextSnapshot)
+	assert.GreaterOrEqual(t, time.Now(), newFactory.nextSnapshot)
 	assert.Equal(t, newManager, agent.manager)
 }
 
@@ -304,7 +307,7 @@ func (stub clientVaultAPIAuthStub) Login(_ context.Context, _ any) (time.Duratio
 	return 0, nil
 }
 
-type storageControllerStub struct {
+type storageControllerFactoryStub struct {
 	defaults          storage.StorageConfigDefaults
 	uploadData        string
 	uploadFails       bool
@@ -312,28 +315,36 @@ type storageControllerStub struct {
 	nextSnapshot      time.Time
 }
 
-func (stub *storageControllerStub) Destination() string {
+func (stub *storageControllerFactoryStub) Destination() string {
 	return ""
 }
 
-func (stub *storageControllerStub) ScheduleSnapshot(_ context.Context, _ time.Time, _ storage.StorageConfigDefaults) time.Time {
-	return stub.nextSnapshot
+func (stub *storageControllerFactoryStub) CreateController(context.Context) (storage.StorageController, error) {
+	return storageControllerStub{stub}, nil
 }
 
-func (stub *storageControllerStub) DeleteObsoleteSnapshots(_ context.Context, _ storage.StorageConfigDefaults) (int, error) {
+type storageControllerStub struct {
+	factory *storageControllerFactoryStub
+}
+
+func (stub storageControllerStub) ScheduleSnapshot(_ context.Context, _ time.Time, _ storage.StorageConfigDefaults) (time.Time, error) {
+	return stub.factory.nextSnapshot, nil
+}
+
+func (stub storageControllerStub) DeleteObsoleteSnapshots(_ context.Context, _ storage.StorageConfigDefaults) (int, error) {
 	return 0, nil
 }
 
-func (stub *storageControllerStub) UploadSnapshot(_ context.Context, snapshot io.Reader, timestamp time.Time, defaults storage.StorageConfigDefaults) (bool, time.Time, error) {
-	stub.snapshotTimestamp = timestamp
-	stub.defaults = defaults
-	if stub.uploadFails {
-		return false, stub.nextSnapshot, errors.New("upload failed")
+func (stub storageControllerStub) UploadSnapshot(_ context.Context, snapshot io.Reader, timestamp time.Time, defaults storage.StorageConfigDefaults) (bool, time.Time, error) {
+	stub.factory.snapshotTimestamp = timestamp
+	stub.factory.defaults = defaults
+	if stub.factory.uploadFails {
+		return false, stub.factory.nextSnapshot, errors.New("upload failed")
 	}
 	data, err := io.ReadAll(snapshot)
 	if err != nil {
 		return false, time.Now(), err
 	}
-	stub.uploadData = string(data)
-	return true, stub.nextSnapshot, nil
+	stub.factory.uploadData = string(data)
+	return true, stub.factory.nextSnapshot, nil
 }

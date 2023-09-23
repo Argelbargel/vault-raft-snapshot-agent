@@ -12,32 +12,25 @@ import (
 	"testing"
 )
 
-func TestLocalDestination(t *testing.T) {
-	config := LocalStorageConfig{Path: "/test"}
-	impl, _ := createLocalStorageController(context.Background(), config)
-
-	assert.Equal(t, "local path /test", impl.Destination())
-}
-
 func TestLocalUploadSnapshotFailsIfFileCannotBeCreated(t *testing.T) {
 	impl := localStorageImpl{"./does/not/exist"}
 
-	err := impl.UploadSnapshot(context.Background(), "test", &bytes.Buffer{})
+	err := impl.uploadSnapshot(context.Background(), "test", &bytes.Buffer{})
 
-	assert.Error(t, err, "UploadSnapshot() should fail if file could not be created!")
+	assert.Error(t, err, "uploadSnapshot() should fail if file could not be created!")
 }
 
 func TestLocalUploadeSnapshotCreatesFile(t *testing.T) {
 	impl := localStorageImpl{t.TempDir()}
 	snapshotData := []byte("test")
 
-	err := impl.UploadSnapshot(context.Background(), "test.snap", bytes.NewReader(snapshotData))
+	err := impl.uploadSnapshot(context.Background(), "test.snap", bytes.NewReader(snapshotData))
 
-	assert.NoError(t, err, "UploadSnapshot() failed unexpectedly!")
+	assert.NoError(t, err, "uploadSnapshot() failed unexpectedly!")
 
 	backupData, err := os.ReadFile(fmt.Sprintf("%s/test.snap", impl.path))
 
-	assert.NoError(t, err, "UploadSnapshot() failed unexpectedly!")
+	assert.NoError(t, err, "uploadSnapshot() failed unexpectedly!")
 	assert.Equal(t, snapshotData, backupData)
 }
 
@@ -49,14 +42,14 @@ func TestLocalDeleteSnapshot(t *testing.T) {
 		_ = os.RemoveAll(filepath.Dir(impl.path))
 	}()
 
-	err := impl.UploadSnapshot(context.Background(), "test.snap", bytes.NewReader(snapshotData))
-	assert.NoError(t, err, "UploadSnapshot() failed unexpectedly!")
+	err := impl.uploadSnapshot(context.Background(), "test.snap", bytes.NewReader(snapshotData))
+	assert.NoError(t, err, "uploadSnapshot() failed unexpectedly!")
 
 	info, err := os.Stat(fmt.Sprintf("%s/test.snap", impl.path))
 	assert.NoError(t, err, "could not get info for snapshot: %v", err)
 
-	err = impl.DeleteSnapshot(context.Background(), info)
-	assert.NoError(t, err, "DeleteSnapshot() failed unexpectedly!")
+	err = impl.deleteSnapshot(context.Background(), info)
+	assert.NoError(t, err, "deleteSnapshot() failed unexpectedly!")
 
 	_, err = os.Stat(fmt.Sprintf("%s/test.snap", impl.path))
 	assert.Error(t, err)
@@ -71,7 +64,7 @@ func TestLocalListSnapshots(t *testing.T) {
 		expectedSnaphotNames = append(expectedSnaphotNames, createEmptySnapshot(t, impl.path, "test", ".snap").Name())
 	}
 
-	listedSnapshots, err := impl.ListSnapshots(context.Background(), "test", ".snap")
+	listedSnapshots, err := impl.listSnapshots(context.Background(), "test", ".snap")
 	listedSnapshotNames := funk.Map(listedSnapshots, func(s os.FileInfo) string { return s.Name() })
 
 	assert.NoError(t, err)
@@ -83,7 +76,7 @@ func TestLocalGetLastModifiedTime(t *testing.T) {
 	impl := localStorageImpl{t.TempDir()}
 
 	snapshot := createEmptySnapshot(t, impl.path, "test", ".snap")
-	assert.Equal(t, snapshot.ModTime(), impl.GetLastModifiedTime(snapshot))
+	assert.Equal(t, snapshot.ModTime(), impl.getLastModifiedTime(snapshot))
 }
 
 func createEmptySnapshot(t *testing.T, dir string, prefix string, suffix string) os.FileInfo {

@@ -107,12 +107,7 @@ func (a *SnapshotAgent) reconfigure(ctx context.Context, config SnapshotAgentCon
 		return err
 	}
 
-	manager, err := storage.CreateManager(ctx, config.Snapshots.Storages)
-	if err != nil {
-		return err
-	}
-
-	a.update(ctx, client, manager, config.Snapshots.StorageConfigDefaults)
+	a.update(ctx, client, storage.CreateManager(config.Snapshots.Storages), config.Snapshots.StorageConfigDefaults)
 	return nil
 }
 

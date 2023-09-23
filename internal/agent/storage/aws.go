@@ -37,46 +37,50 @@ type awsStorageImpl struct {
 	sse       bool
 }
 
-func createAWSStorageController(ctx context.Context, config AWSStorageConfig) (*storageControllerImpl[types.Object], error) {
+func (conf AWSStorageConfig) Destination() string {
+	return fmt.Sprintf("aws s3 bucket %s at %s", conf.Bucket, conf.Endpoint)
+}
+
+func (conf AWSStorageConfig) CreateController(ctx context.Context) (StorageController, error) {
 	keyPrefix := ""
-	if config.KeyPrefix != "" {
-		keyPrefix = fmt.Sprintf("%s/", config.KeyPrefix)
+	if conf.KeyPrefix != "" {
+		keyPrefix = fmt.Sprintf("%s/", conf.KeyPrefix)
 	}
 
-	client, err := createS3Client(ctx, config)
+	client, err := conf.createClient(ctx)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	return newStorageController[types.Object](
-		config.storageConfig,
-		fmt.Sprintf("aws s3 bucket %s at %s", config.Bucket, config.Endpoint),
+		conf.storageConfig,
 		awsStorageImpl{
 			client:    client,
 			keyPrefix: keyPrefix,
-			bucket:    config.Bucket,
-			sse:       config.UseServerSideEncryption,
+			bucket:    conf.Bucket,
+			sse:       conf.UseServerSideEncryption,
 		},
 	), nil
+
 }
 
-func createS3Client(ctx context.Context, config AWSStorageConfig) (*s3.Client, error) {
-	accessKeyId, err := config.AccessKeyId.Resolve(false)
+func (conf AWSStorageConfig) createClient(ctx context.Context) (*s3.Client, error) {
+	accessKeyId, err := conf.AccessKeyId.Resolve(false)
 	if err != nil {
 		return nil, err
 	}
 
-	accessKey, err := config.AccessKey.Resolve(accessKeyId != "")
+	accessKey, err := conf.AccessKey.Resolve(accessKeyId != "")
 	if err != nil {
 		return nil, err
 	}
 
-	sessionToken, err := config.SessionToken.Resolve(false)
+	sessionToken, err := conf.SessionToken.Resolve(false)
 	if err != nil {
 		return nil, err
 	}
 
-	region, err := config.Region.Resolve(false)
+	region, err := conf.Region.Resolve(false)
 	if err != nil {
 		return nil, err
 	}
@@ -90,14 +94,14 @@ func createS3Client(ctx context.Context, config AWSStorageConfig) (*s3.Client, e
 		clientConfig.Credentials = credentials.NewStaticCredentialsProvider(accessKeyId, accessKey, sessionToken)
 	}
 
-	endpoint, err := config.Endpoint.Resolve(false)
+	endpoint, err := conf.Endpoint.Resolve(false)
 	if err != nil {
 		return nil, err
 	}
 
 	client := s3.NewFromConfig(clientConfig, func(o *s3.Options) {
-		o.UsePathStyle = config.ForcePathStyle
-		if config.Endpoint != "" {
+		o.UsePathStyle = conf.ForcePathStyle
+		if conf.Endpoint != "" {
 			o.BaseEndpoint = aws.String(endpoint)
 		}
 	})
@@ -107,18 +111,18 @@ func createS3Client(ctx context.Context, config AWSStorageConfig) (*s3.Client, e
 
 // nolint:unused
 // implements interface storage
-func (u awsStorageImpl) UploadSnapshot(ctx context.Context, name string, data io.Reader) error {
+func (s awsStorageImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
 	input := &s3.PutObjectInput{
-		Bucket: &u.bucket,
-		Key:    aws.String(u.keyPrefix + name),
+		Bucket: &s.bucket,
+		Key:    aws.String(s.keyPrefix + name),
 		Body:   data,
 	}
 
-	if u.sse {
+	if s.sse {
 		input.ServerSideEncryption = types.ServerSideEncryptionAes256
 	}
 
-	uploader := manager.NewUploader(u.client)
+	uploader := manager.NewUploader(s.client)
 	if _, err := uploader.Upload(ctx, input); err != nil {
 		return err
 	}
@@ -128,13 +132,13 @@ func (u awsStorageImpl) UploadSnapshot(ctx context.Context, name string, data io
 
 // nolint:unused
 // implements interface storage
-func (u awsStorageImpl) DeleteSnapshot(ctx context.Context, snapshot types.Object) error {
+func (s awsStorageImpl) deleteSnapshot(ctx context.Context, snapshot types.Object) error {
 	input := &s3.DeleteObjectInput{
-		Bucket: &u.bucket,
+		Bucket: &s.bucket,
 		Key:    snapshot.Key,
 	}
 
-	if _, err := u.client.DeleteObject(ctx, input); err != nil {
+	if _, err := s.client.DeleteObject(ctx, input); err != nil {
 		return err
 	}
 
@@ -143,12 +147,12 @@ func (u awsStorageImpl) DeleteSnapshot(ctx context.Context, snapshot types.Objec
 
 // nolint:unused
 // implements interface storage
-func (u awsStorageImpl) ListSnapshots(ctx context.Context, prefix string, ext string) ([]types.Object, error) {
+func (s awsStorageImpl) listSnapshots(ctx context.Context, prefix string, ext string) ([]types.Object, error) {
 	var result []types.Object
 
-	existingSnapshotList, err := u.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
-		Bucket: &u.bucket,
-		Prefix: aws.String(u.keyPrefix),
+	existingSnapshotList, err := s.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+		Bucket: &s.bucket,
+		Prefix: aws.String(s.keyPrefix),
 	})
 
 	if err != nil {
@@ -166,6 +170,6 @@ func (u awsStorageImpl) ListSnapshots(ctx context.Context, prefix string, ext st
 
 // nolint:unused
 // implements interface storage
-func (u awsStorageImpl) GetLastModifiedTime(snapshot types.Object) time.Time {
+func (s awsStorageImpl) getLastModifiedTime(snapshot types.Object) time.Time {
 	return *snapshot.LastModified
 }
