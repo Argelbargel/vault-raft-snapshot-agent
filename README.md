@@ -541,7 +541,7 @@ Any option common [snapshot configuration option](#snapshot-configuration) overr
 ##### Minimal Configuration
 ```
 snapshots:
-  storage:
+  storages:
     azure:
       container: <container>
 ```
@@ -560,7 +560,7 @@ Any option common [snapshot configuration option](#snapshot-configuration) overr
 ##### Minimal Configuration
 ```
 snapshots:
-  storage:
+  storages:
     gcp:
       bucket: <bucket>
 ```
