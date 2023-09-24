@@ -534,7 +534,7 @@ snapshots:
 | `useServerSideEncryption` | Boolean                                          | *false*                       | Set to true to turn on AWS' AES256 encryption. Support for AWS KMS keys is not currently supported                |
 | `forcePathStyle`          | Boolean                                          | *false*                       | needed if your S3 Compatible storage supports only path-style, or you would like to use S3's FIPS Endpoint        |
 
-Any option common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
+Any common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
 
 #### Azure Storage
 
@@ -554,7 +554,7 @@ snapshots:
 | `accountKey`  | [Secret](#secrets-and-external-property-sources) | *env://AZURE_STORAGE_KEY*     | the account key of the storage account; **must resolve to non-empty value**  |
 | `cloudDomain` | String                                           | *blob.core.windows.net*       | domain of the cloud-service to use                                           |
 
-Any option common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
+Any common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
 
 #### Google Cloud Storage
 ##### Minimal Configuration
@@ -585,7 +585,7 @@ snapshots:
 | ------ | ------ | ------------------ | --------------------------------------------------------------------------------------------------------------- |
 | `path` | String | **required**       | fully qualified path, not including file name, for where the snapshot should be written. i.e. `/raft/snapshots` |
 
-Any option common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
+Any common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
 
 #### Openstack Swift Storage
 ##### Minimal Configuration
@@ -608,7 +608,7 @@ snapshots:
 | `tenantId`  | String                                                 |                        | optional id of the tenant                                                 |
 | `timeout`   | [Duration](https://golang.org/pkg/time/#ParseDuration) | *60s*                  | timeout for snapshot-uploads                                              |
 
-Any option common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
+Any common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
 
 ## License
 
