@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/logging"
 	"time"
 
 	"github.com/hashicorp/vault/api"
@@ -57,12 +58,13 @@ func (am vaultAuthMethod[C, M]) Login(ctx context.Context, client *api.Client) (
 		return 0, err
 	}
 
-	authSecret, err := method.Login(ctx, client)
+	authSecret, err := client.Auth().Login(ctx, method)
 	if err != nil {
 		return 0, err
 	}
 
-	return time.Duration(authSecret.LeaseDuration), nil
+	logging.Debug("Successfully logged in", "leaseDuration", authSecret.Auth.LeaseDuration, "policies", authSecret.Auth.TokenPolicies)
+	return time.Duration(authSecret.Auth.LeaseDuration), nil
 }
 
 func (am vaultAuthMethod[C, M]) createAuthMethod() (M, error) {

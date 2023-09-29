@@ -229,8 +229,10 @@ To allow the App-Role access to the snapshots you should run the following comma
 
 ```
 vault write auth/<path>/role/snapshot token_policies=snapshots
-vault read auth/<path>/role/snapshot/<role-id>
-vault write -f auth/<path>/role/snapshot/<secret-id>
+vault read auth/<path>/role/snapshot/role-id
+# prints role-id and meta-data
+vault write -f auth/<path>/role/snapshot/secret-id
+# prints the secret id and it's metadata
 ```
 
 #### AWS authentication
