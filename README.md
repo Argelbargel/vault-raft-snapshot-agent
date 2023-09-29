@@ -573,7 +573,7 @@ Any common [snapshot configuration option](#snapshot-configuration) overrides th
 
 #### Google Cloud Storage
 
-Uploads snapshots into a [Google Cloud storage](https://cloud.google.com/) bucket.
+Uploads snapshots into a [Google Cloud storage](https://cloud.google.com/storage) bucket.
 
 ##### Minimal Configuration
 
