@@ -63,7 +63,7 @@ func (am vaultAuthMethod[C, M]) Login(ctx context.Context, client *api.Client) (
 		return 0, err
 	}
 
-	logging.Debug("Successfully logged in", "leaseDuration", authSecret.Auth.LeaseDuration, "policies", authSecret.Auth.TokenPolicies)
+	logging.Debug("Successfully logged into vault", "leaseDuration", authSecret.Auth.LeaseDuration, "policies", authSecret.Auth.TokenPolicies)
 	return time.Duration(authSecret.Auth.LeaseDuration), nil
 }
 
