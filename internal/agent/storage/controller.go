@@ -21,7 +21,7 @@ type storageControllerImpl[S any] struct {
 
 // storage defines the interface used by storageControllerImpl to access a storage-location
 type storage[S any] interface {
-	uploadSnapshot(ctx context.Context, name string, data io.Reader) error
+	uploadSnapshot(ctx context.Context, name string, data io.Reader, size int64) error
 	deleteSnapshot(ctx context.Context, snapshot S) error
 	listSnapshots(ctx context.Context, prefix string, suffix string) ([]S, error)
 	getLastModifiedTime(snapshot S) time.Time
@@ -55,7 +55,7 @@ func (u *storageControllerImpl[S]) ScheduleSnapshot(ctx context.Context, lastSna
 	return u.lastUpload.Add(u.config.frequencyOrDefault(defaults)), nil
 }
 
-func (u *storageControllerImpl[S]) UploadSnapshot(ctx context.Context, snapshot io.Reader, timestamp time.Time, defaults StorageConfigDefaults) (bool, time.Time, error) {
+func (u *storageControllerImpl[S]) UploadSnapshot(ctx context.Context, snapshot io.Reader, snapshotSize int64, timestamp time.Time, defaults StorageConfigDefaults) (bool, time.Time, error) {
 	frequency := u.config.frequencyOrDefault(defaults)
 
 	if timestamp.Before(u.lastUpload.Add(frequency)) {
@@ -73,7 +73,7 @@ func (u *storageControllerImpl[S]) UploadSnapshot(ctx context.Context, snapshot 
 	ts := timestamp.Format(u.config.timestampFormatOrDefault(defaults))
 	snapshotName := strings.Join([]string{prefix, ts, suffix}, "")
 
-	if err := u.storage.uploadSnapshot(ctx, snapshotName, snapshot); err != nil {
+	if err := u.storage.uploadSnapshot(ctx, snapshotName, snapshot, snapshotSize); err != nil {
 		return false, nextSnapshot, err
 	}
 

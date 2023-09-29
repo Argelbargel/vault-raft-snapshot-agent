@@ -119,6 +119,15 @@ func TestReadCompleteConfig(t *testing.T) {
 					Region:    "test-region",
 					TenantId:  "test-tenant",
 				},
+				S3: storage.S3StorageConfig{
+					Endpoint:     "test-s3-endpoint",
+					Bucket:       "test-s3-bucket",
+					AccessKeyId:  "test-s3-key",
+					AccessKey:    "test-s3-secret",
+					SessionToken: "test-s3-token",
+					Region:       "test-s3-region",
+					Insecure:     true,
+				},
 			},
 		},
 	}
@@ -206,6 +215,12 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 					ApiKey:   secret.FromEnv("SWIFT_API_KEY"),
 					Region:   secret.FromEnv("SWIFT_REGION"),
 					Empty:    true,
+				},
+				S3: storage.S3StorageConfig{
+					AccessKeyId:  secret.FromEnv("S3_ACCESS_KEY_ID"),
+					AccessKey:    secret.FromEnv("S3_SECRET_ACCESS_KEY"),
+					SessionToken: secret.FromEnv("S3_SESSION_TOKEN"),
+					Empty:        true,
 				},
 			},
 		},

@@ -33,7 +33,7 @@ type StorageController interface {
 	// corresponds with its scheduled upload-date.
 	// For the case that the storageConfig of the controller does not specify one of its fields,
 	// StorageConfigDefaults is passed.
-	UploadSnapshot(ctx context.Context, snapshot io.Reader, timestamp time.Time, defaults StorageConfigDefaults) (bool, time.Time, error)
+	UploadSnapshot(ctx context.Context, snapshot io.Reader, snapshotSize int64, timestamp time.Time, defaults StorageConfigDefaults) (bool, time.Time, error)
 	DeleteObsoleteSnapshots(ctx context.Context, defaults StorageConfigDefaults) (int, error)
 }
 
@@ -56,6 +56,9 @@ func CreateManager(storageConfig StoragesConfig) *Manager {
 	}
 	if !storageConfig.Swift.Empty {
 		manager.AddStorageFactory(storageConfig.Swift)
+	}
+	if !storageConfig.S3.Empty {
+		manager.AddStorageFactory(storageConfig.S3)
 	}
 
 	return manager
@@ -95,7 +98,7 @@ func (m *Manager) ScheduleSnapshot(ctx context.Context, lastSnapshotTime time.Ti
 // and returns the time the next snapshot should be taken.
 // Whether the snapshot is actually uploaded to a storage is controlled by the StorageController based
 // on the upload-frequency in its StoragesConfig
-func (m *Manager) UploadSnapshot(ctx context.Context, snapshot io.ReadSeeker, timestamp time.Time, defaults StorageConfigDefaults) time.Time {
+func (m *Manager) UploadSnapshot(ctx context.Context, snapshot io.ReadSeeker, snapshotSize int64, timestamp time.Time, defaults StorageConfigDefaults) time.Time {
 	var (
 		nextSnapshot time.Time
 		errs         error
@@ -112,7 +115,7 @@ func (m *Manager) UploadSnapshot(ctx context.Context, snapshot io.ReadSeeker, ti
 			logging.Warn("Could not create storage-controller", "destination", factory.Destination(), "error", err)
 			errs = multierr.Append(errs, err)
 		} else {
-			uploaded, candidate, err := controller.UploadSnapshot(ctx, snapshot, timestamp, defaults)
+			uploaded, candidate, err := controller.UploadSnapshot(ctx, snapshot, snapshotSize, timestamp, defaults)
 			if nextSnapshot.IsZero() || candidate.Before(nextSnapshot) {
 				nextSnapshot = candidate
 			}

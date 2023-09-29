@@ -83,12 +83,14 @@ The location of a custom configuration-file and logging are specified via the co
 | `--help,`               | `-h`          | show help                                                                                                                                                                   |
 | `--version`             | `-v`          | prints version-information and exists                                                                                                                                       |
 
-
 ### Structured Logging
 
-Vault Raft Snapshot Agent uses go's [slog package](https://pkg.go.dev/log/slog) to provide structured logging capabilities. 
-Log format `text` uses [TextHandler](https://pkg.go.dev/log/slog#TextHandler), `json` uses [JSONHandler](https://pkg.go.dev/log/slog#JSONHandler).
-If no log format or `default` is specified the default log format is used which outputs the timestamp followed by the message followed by additional key=value-pairs if any are present.
+Vault Raft Snapshot Agent uses go's [slog package](https://pkg.go.dev/log/slog) to provide structured logging
+capabilities.
+Log format `text` uses [TextHandler](https://pkg.go.dev/log/slog#TextHandler), `json`
+uses [JSONHandler](https://pkg.go.dev/log/slog#JSONHandler).
+If no log format or `default` is specified the default log format is used which outputs the timestamp followed by the
+message followed by additional key=value-pairs if any are present.
 
 ## Environment variables
 
@@ -486,6 +488,7 @@ to `timestampFormat` and `nameSuffix`, e.g. the defaults would generate
 CEST (GMT + 2h).
 
 These options can be overridden for a specific storage:
+
 ```
 snapshots:
   frequency: 1h
@@ -499,6 +502,7 @@ snapshots:
       timestampFormat: 2006-01-02
       #...
 ```
+
 In this example the agent would take and store a snapshot to the local-storage every hour, retaining 24 snapshots and
 store a daily snapshot on aws remote storage, retaining the last 365 snapshots with a appropriate shorter timestamp.
 
@@ -513,9 +517,13 @@ When using multiple remote storages, increase the timeout allowed via `snapahots
 Each option can be specified exactly once;
 it is currently not possible to e.g. upload to multiple aws regions by specifying multiple `aws`-storage-options.
 
-#### AWS S3 Upload
+#### AWS S3 Storage
+
+Uploads snapshots to AWS` S3. This storage uses
+the [AWS Go SDK](https://pkg.go.dev/github.com/aws/aws-sdk-go/service/s3)
 
 ##### Minimal Configuration
+
 ```
 snapshots:
   storage
@@ -524,6 +532,7 @@ snapshots:
 ```
 
 ##### Configuration Options
+
 | Key                       | Type                                             | Required/*Default*            | Description                                                                                                       |
 | ------------------------- | ------------------------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `bucket`                  | String                                           | **required**                  | bucket to store snapshots in                                                                                      |
@@ -541,6 +550,7 @@ Any common [snapshot configuration option](#snapshot-configuration) overrides th
 #### Azure Storage
 
 ##### Minimal Configuration
+
 ```
 snapshots:
   storages:
@@ -549,6 +559,7 @@ snapshots:
 ```
 
 ##### Configuration Options
+
 | Key           | Type                                             | Required/*Default*            | Description                                                                  |
 | ------------- | ------------------------------------------------ | ----------------------------- | ---------------------------------------------------------------------------- |
 | `container`   | String                                           | **required**                  | the name of the blob container to write to                                   |
@@ -559,7 +570,9 @@ snapshots:
 Any common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
 
 #### Google Cloud Storage
+
 ##### Minimal Configuration
+
 ```
 snapshots:
   storages:
@@ -568,6 +581,7 @@ snapshots:
 ```
 
 ##### Configuration Options
+
 | Key      | Type   | Required/*Default* | Description                                                                               |
 | -------- | ------ | ------------------ | ----------------------------------------------------------------------------------------- |
 | `bucket` | String | **required**       | the Google Storage Bucket to write to. Auth is expected to be default machine credentials |
@@ -575,14 +589,18 @@ snapshots:
 Any option common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
 
 #### Local Storage
+
 ##### Minimal Configuration
+
 ```
 snapshots:
   storages:
     local:
       path: <path>
 ```
+
 ##### Configuration Options
+
 | Key    | Type   | Required/*Default* | Description                                                                                                     |
 | ------ | ------ | ------------------ | --------------------------------------------------------------------------------------------------------------- |
 | `path` | String | **required**       | fully qualified path, not including file name, for where the snapshot should be written. i.e. `/raft/snapshots` |
@@ -590,7 +608,9 @@ snapshots:
 Any common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
 
 #### Openstack Swift Storage
+
 ##### Minimal Configuration
+
 ```
 snapshots:
   storages:
@@ -609,6 +629,35 @@ snapshots:
 | `domain`    | URL                                                    |                        | optional user's domain name                                               |
 | `tenantId`  | String                                                 |                        | optional id of the tenant                                                 |
 | `timeout`   | [Duration](https://golang.org/pkg/time/#ParseDuration) | *60s*                  | timeout for snapshot-uploads                                              |
+
+Any common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
+
+#### Generic/MinIO S3 Storage
+
+Uploads snapshots to any S3-compatible server. This storage uses
+the [MinIO Go Client SDK](https://github.com/minio/minio-go)
+
+##### Minimal Configuration
+
+```
+snapshots:
+  storage
+    s3:
+      endpoint: <endpoint>
+      bucket: <bucket>
+```
+
+##### Configuration Options
+
+| Key            | Type                                             | Required/*Default*           | Description                                                                                                       |
+| -------------- | ------------------------------------------------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `endpoint`     | String                                           | **required**                 | S3 compatible storage endpoint (ex: my-storage.example.com)                                                       |
+| `bucket`       | String                                           | **required**                 | bucket to store snapshots in                                                                                      |
+| `accessKeyId`  | [Secret](#secrets-and-external-property-sources) | *env://S3_ACCESS_KEY_ID*     | specifies the access key                                                                                          |
+| `accessKey`    | [Secret](#secrets-and-external-property-sources) | *env://S3_SECRET_ACCESS_KEY* | specifies the secret access key; **must resolve to non-empty value if accessKeyId resolves to a non-empty value** |
+| `sessionToken` | [Secret](#secrets-and-external-property-sources) | *env://S3_SESSION_TOKEN*     | specifies the session token                                                                                       |
+| `region`       | [Secret](#secrets-and-external-property-sources) |                              | S3 region if it is required                                                                                       |
+| `insecure`     | Boolean                                          | *false*                      | whether to connect using https (false) or not                                                                     |
 
 Any common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
 

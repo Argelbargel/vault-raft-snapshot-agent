@@ -33,7 +33,7 @@ func (conf LocalStorageConfig) CreateController(context.Context) (StorageControl
 	), nil
 }
 
-func (u localStorageImpl) uploadSnapshot(_ context.Context, name string, data io.Reader) error {
+func (u localStorageImpl) uploadSnapshot(_ context.Context, name string, data io.Reader, _ int64) error {
 	fileName := fmt.Sprintf("%s/%s", u.path, name)
 
 	file, err := os.Create(fileName)

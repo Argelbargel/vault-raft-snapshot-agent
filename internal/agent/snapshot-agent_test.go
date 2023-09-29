@@ -335,7 +335,7 @@ func (stub storageControllerStub) DeleteObsoleteSnapshots(_ context.Context, _ s
 	return 0, nil
 }
 
-func (stub storageControllerStub) UploadSnapshot(_ context.Context, snapshot io.Reader, timestamp time.Time, defaults storage.StorageConfigDefaults) (bool, time.Time, error) {
+func (stub storageControllerStub) UploadSnapshot(_ context.Context, snapshot io.Reader, _ int64, timestamp time.Time, defaults storage.StorageConfigDefaults) (bool, time.Time, error) {
 	stub.factory.snapshotTimestamp = timestamp
 	stub.factory.defaults = defaults
 	if stub.factory.uploadFails {

@@ -11,6 +11,7 @@ type StoragesConfig struct {
 	GCP   GCPStorageConfig   `default:"{\"Empty\": true}"`
 	Local LocalStorageConfig `default:"{\"Empty\": true}"`
 	Swift SwiftStorageConfig `default:"{\"Empty\": true}"`
+	S3    S3StorageConfig    `default:"{\"Empty\": true}"`
 }
 
 // StorageConfigDefaults specified the default values of storageConfig for all factories
