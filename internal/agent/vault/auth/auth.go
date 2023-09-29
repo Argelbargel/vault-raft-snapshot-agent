@@ -63,8 +63,18 @@ func (am vaultAuthMethod[C, M]) Login(ctx context.Context, client *api.Client) (
 		return 0, err
 	}
 
-	logging.Debug("Successfully logged into vault", "leaseDuration", authSecret.Auth.LeaseDuration, "policies", authSecret.Auth.TokenPolicies)
-	return time.Duration(authSecret.Auth.LeaseDuration), nil
+	tokenTTL, err := authSecret.TokenTTL()
+	if err != nil {
+		return 0, err
+	}
+
+	tokenPolicies, err := authSecret.TokenPolicies()
+	if err != nil {
+		return 0, err
+	}
+
+	logging.Debug("Successfully logged into vault", "ttl", tokenTTL, "policies", tokenPolicies)
+	return tokenTTL, nil
 }
 
 func (am vaultAuthMethod[C, M]) createAuthMethod() (M, error) {

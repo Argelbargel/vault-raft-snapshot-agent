@@ -44,7 +44,7 @@ func TestVaultAuthMethod_Login_ReturnsLeaseDuration(t *testing.T) {
 	leaseDuration, err := auth.Login(context.Background(), &api.Client{})
 
 	assert.NoError(t, err, "Login failed unexpectedly")
-	assert.Equal(t, time.Duration(expectedLeaseDuration), leaseDuration)
+	assert.Equal(t, time.Duration(expectedLeaseDuration)*time.Second, leaseDuration)
 }
 
 type authMethodStub struct {

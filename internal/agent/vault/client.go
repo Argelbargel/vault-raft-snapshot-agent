@@ -3,6 +3,7 @@ package vault
 import (
 	"context"
 	"fmt"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/logging"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/vault/auth"
 	"io"
 	"time"
@@ -87,6 +88,7 @@ func (c *Client[CLI, AUTH]) refreshAuth(ctx context.Context) error {
 			return fmt.Errorf("could not refresh auth: %s", err)
 		}
 		c.authExpiration = time.Now().Add(leaseDuration / 2)
+		logging.Debug("Successfully refreshed authentication", "authExpiration", c.authExpiration, "leaseDuration", leaseDuration)
 	}
 	return nil
 }
