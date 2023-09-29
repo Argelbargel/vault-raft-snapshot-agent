@@ -118,7 +118,7 @@ func (a *SnapshotAgent) update(ctx context.Context, client snapshotAgentVaultAPI
 	a.client = client
 	a.manager = manager
 	a.storageConfigDefaults = defaults
-	a.updateTimer(manager.ScheduleSnapshot(ctx, a.lastSnapshotTime, a.storageConfigDefaults))
+	a.updateTimer(manager.ScheduleSnapshot(ctx, a.lastSnapshotTime, a.storageConfigDefaults), true)
 }
 
 func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Timer {
@@ -128,7 +128,7 @@ func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Timer {
 	a.lastSnapshotTime = time.Now()
 	// ensure that we do not hammer on vault in case of errors
 	nextSnapshot := a.lastSnapshotTime.Add(a.storageConfigDefaults.Frequency)
-	a.updateTimer(nextSnapshot)
+	a.updateTimer(nextSnapshot, false)
 
 	snapshot, err := os.CreateTemp(a.tempDir, "snapshot")
 	if err != nil {
@@ -162,10 +162,10 @@ func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Timer {
 	}
 
 	nextSnapshot = a.manager.UploadSnapshot(ctx, snapshot, a.lastSnapshotTime, a.storageConfigDefaults)
-	return a.updateTimer(nextSnapshot)
+	return a.updateTimer(nextSnapshot, false)
 }
 
-func (a *SnapshotAgent) updateTimer(nextSnapshot time.Time) *time.Timer {
+func (a *SnapshotAgent) updateTimer(nextSnapshot time.Time, drain bool) *time.Timer {
 	if !nextSnapshot.IsZero() {
 		now := time.Now()
 		timeout := time.Duration(0)
@@ -174,7 +174,7 @@ func (a *SnapshotAgent) updateTimer(nextSnapshot time.Time) *time.Timer {
 			timeout = nextSnapshot.Sub(now)
 		}
 
-		if !a.snapshotTimer.Stop() {
+		if drain && !a.snapshotTimer.Stop() {
 			<-a.snapshotTimer.C
 		}
 
