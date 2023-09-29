@@ -519,8 +519,8 @@ it is currently not possible to e.g. upload to multiple aws regions by specifyin
 
 #### AWS S3 Storage
 
-Uploads snapshots to AWS` S3. This storage uses
-the [AWS Go SDK](https://pkg.go.dev/github.com/aws/aws-sdk-go/service/s3). Use this storage for AWS-hosted S3 services that use an AWS S3-API compatible addressing-scheme (e.g. https://<bucket>.<endpoint>). For other S3 implementations, try the [generic s3 storage](#genericminio-s3-storage)
+Uploads snapshots to [AWS S3 storage](https://aws.amazon.com/s3/) bucket. This storage uses
+the [AWS Go SDK](https://pkg.go.dev/github.com/aws/aws-sdk-go/service/s3). Use this storage for AWS-hosted S3 services that use an AWS S3-API compatible addressing-scheme (e.g. `https://<bucket>-<endpoint>). For other S3 implementations, try the [generic s3 storage](#genericminio-s3-storage).
 
 ##### Minimal Configuration
 
@@ -549,6 +549,8 @@ Any common [snapshot configuration option](#snapshot-configuration) overrides th
 
 #### Azure Storage
 
+Uploads snapshots to an [Azure Blob Storage](https://azure.microsoft.com/en-us/products/storage/blobs) container.
+
 ##### Minimal Configuration
 
 ```
@@ -570,6 +572,8 @@ snapshots:
 Any common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
 
 #### Google Cloud Storage
+
+Uploads snapshots into a [Google Cloud storage](https://cloud.google.com/) bucket.
 
 ##### Minimal Configuration
 
@@ -608,6 +612,8 @@ snapshots:
 Any common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
 
 #### Openstack Swift Storage
+
+Uploads snapshots to a [Openstack Swift Object Storage](https://www.openstack.org/software/releases/zed/components/swift) container.
 
 ##### Minimal Configuration
 
