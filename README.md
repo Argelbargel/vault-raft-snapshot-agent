@@ -520,7 +520,7 @@ it is currently not possible to e.g. upload to multiple aws regions by specifyin
 #### AWS S3 Storage
 
 Uploads snapshots to AWS` S3. This storage uses
-the [AWS Go SDK](https://pkg.go.dev/github.com/aws/aws-sdk-go/service/s3)
+the [AWS Go SDK](https://pkg.go.dev/github.com/aws/aws-sdk-go/service/s3). Use this storage for AWS-hosted S3 services that use an AWS S3-API compatible addressing-scheme (e.g. https://<bucket>.<endpoint>). For other S3 implementations, try the [generic s3 storage](#genericminio-s3-storage)
 
 ##### Minimal Configuration
 
@@ -635,7 +635,7 @@ Any common [snapshot configuration option](#snapshot-configuration) overrides th
 #### Generic/MinIO S3 Storage
 
 Uploads snapshots to any S3-compatible server. This storage uses
-the [MinIO Go Client SDK](https://github.com/minio/minio-go)
+the [MinIO Go Client SDK](https://github.com/minio/minio-go). If your self-hosted S3-server does not support the default adressing-scheme of [AWS S3](#aws-s3-storage), then this storage might still work.
 
 ##### Minimal Configuration
 
