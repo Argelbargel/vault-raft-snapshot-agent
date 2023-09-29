@@ -33,8 +33,8 @@ func TestTakeSnapshotUploadsSnapshot(t *testing.T) {
 	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
 
 	start := time.Now()
-	timer := agent.TakeSnapshot(ctx)
-	<-timer.C
+	ticker := agent.TakeSnapshot(ctx)
+	<-ticker.C
 
 	assert.True(t, clientVaultAPI.tookSnapshot)
 	assert.Equal(t, clientVaultAPI.snapshotData, factory.uploadData)
@@ -129,8 +129,8 @@ func TestTakeSnapshotFailsWhenTempFileCannotBeCreated(t *testing.T) {
 	agent := newSnapshotAgent("./missing")
 	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
 
-	timer := agent.TakeSnapshot(ctx)
-	<-timer.C
+	ticker := agent.TakeSnapshot(ctx)
+	<-ticker.C
 
 	assert.False(t, clientVaultAPI.tookSnapshot)
 	assert.Less(t, time.Now(), factory.nextSnapshot.Add(-defaults.Frequency))
@@ -158,8 +158,8 @@ func TestTakeSnapshotFailsWhenSnapshottingFails(t *testing.T) {
 	agent := newSnapshotAgent(t.TempDir())
 	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
 
-	timer := agent.TakeSnapshot(ctx)
-	<-timer.C
+	ticker := agent.TakeSnapshot(ctx)
+	<-ticker.C
 
 	assert.True(t, clientVaultAPI.tookSnapshot)
 	assert.Less(t, time.Now(), factory.nextSnapshot.Add(-defaults.Frequency))
@@ -186,8 +186,8 @@ func TestTakeSnapshotIgnoresEmptySnapshot(t *testing.T) {
 	agent := newSnapshotAgent(t.TempDir())
 	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
 
-	timer := agent.TakeSnapshot(ctx)
-	<-timer.C
+	ticker := agent.TakeSnapshot(ctx)
+	<-ticker.C
 
 	assert.True(t, clientVaultAPI.tookSnapshot)
 	assert.Less(t, time.Now(), factory.nextSnapshot.Add(-defaults.Frequency))
@@ -216,8 +216,8 @@ func TestIgnoresZeroTimeForScheduling(t *testing.T) {
 	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
 
 	start := time.Now()
-	timer := agent.TakeSnapshot(ctx)
-	<-timer.C
+	ticker := agent.TakeSnapshot(ctx)
+	<-ticker.C
 
 	assert.True(t, clientVaultAPI.tookSnapshot)
 	assert.Equal(t, clientVaultAPI.snapshotData, factory.uploadData)
@@ -242,7 +242,7 @@ func TestUpdateReschedulesSnapshots(t *testing.T) {
 	agent := newSnapshotAgent(t.TempDir())
 	client := newClient(clientVaultAPI)
 	agent.update(ctx, client, manager, storage.StorageConfigDefaults{})
-	timer := agent.TakeSnapshot(ctx)
+	ticker := agent.TakeSnapshot(ctx)
 
 	updated := make(chan bool, 1)
 	go func() {
@@ -251,7 +251,7 @@ func TestUpdateReschedulesSnapshots(t *testing.T) {
 	}()
 
 	<-updated
-	<-timer.C
+	<-ticker.C
 
 	assert.GreaterOrEqual(t, time.Now(), newFactory.nextSnapshot)
 	assert.Equal(t, newManager, agent.manager)

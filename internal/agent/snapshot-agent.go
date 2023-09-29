@@ -41,7 +41,7 @@ type SnapshotAgent struct {
 	tempDir               string
 	storageConfigDefaults storage.StorageConfigDefaults
 	lastSnapshotTime      time.Time
-	snapshotTimer         *time.Timer
+	snapshotTicker        *time.Ticker
 }
 
 type snapshotAgentVaultAPI interface {
@@ -96,8 +96,8 @@ func createSnapshotAgent(ctx context.Context, config SnapshotAgentConfig) (*Snap
 
 func newSnapshotAgent(tempDir string) *SnapshotAgent {
 	return &SnapshotAgent{
-		snapshotTimer: time.NewTimer(0),
-		tempDir:       tempDir,
+		snapshotTicker: time.NewTicker(time.Hour),
+		tempDir:        tempDir,
 	}
 }
 
@@ -118,22 +118,24 @@ func (a *SnapshotAgent) update(ctx context.Context, client snapshotAgentVaultAPI
 	a.client = client
 	a.manager = manager
 	a.storageConfigDefaults = defaults
-	a.updateTimer(manager.ScheduleSnapshot(ctx, a.lastSnapshotTime, a.storageConfigDefaults), true)
+	nextSnapshot := manager.ScheduleSnapshot(ctx, a.lastSnapshotTime, a.storageConfigDefaults)
+	a.updateTicker(nextSnapshot)
+	logging.Debug("Successfully updated configuration", "nextSnapshot", nextSnapshot)
 }
 
-func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Timer {
+func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Ticker {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
 	a.lastSnapshotTime = time.Now()
 	// ensure that we do not hammer on vault in case of errors
 	nextSnapshot := a.lastSnapshotTime.Add(a.storageConfigDefaults.Frequency)
-	a.updateTimer(nextSnapshot, false)
+	a.updateTicker(nextSnapshot)
 
 	snapshot, err := os.CreateTemp(a.tempDir, "snapshot")
 	if err != nil {
 		logging.Warn("Could not create snapshot-temp-file", "nextSnapshot", nextSnapshot, "error", err)
-		return a.snapshotTimer
+		return a.snapshotTicker
 	}
 
 	defer func() {
@@ -147,38 +149,32 @@ func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Timer {
 	err = a.client.TakeSnapshot(ctx, snapshot)
 	if err != nil {
 		logging.Error("Could not take snapshot of vault", "nextSnapshot", nextSnapshot, "error", err)
-		return a.snapshotTimer
+		return a.snapshotTicker
 	}
 
 	info, err := snapshot.Stat()
 	if err != nil {
 		logging.Error("Could not stat snapshot-temp-file", "file", snapshot.Name(), "nextSnapshot", nextSnapshot, "error", err)
-		return a.snapshotTimer
+		return a.snapshotTicker
 	}
 
 	if info.Size() < 1 {
 		logging.Warn("Ignoring empty snapshot", "file", snapshot.Name(), "nextSnapshot", nextSnapshot)
-		return a.snapshotTimer
+		return a.snapshotTicker
 	}
 
 	nextSnapshot = a.manager.UploadSnapshot(ctx, snapshot, a.lastSnapshotTime, a.storageConfigDefaults)
-	return a.updateTimer(nextSnapshot, false)
+	return a.updateTicker(nextSnapshot)
 }
 
-func (a *SnapshotAgent) updateTimer(nextSnapshot time.Time, drain bool) *time.Timer {
+func (a *SnapshotAgent) updateTicker(nextSnapshot time.Time) *time.Ticker {
 	if !nextSnapshot.IsZero() {
 		now := time.Now()
-		timeout := time.Duration(0)
 
 		if nextSnapshot.After(now) {
-			timeout = nextSnapshot.Sub(now)
+			timeout := nextSnapshot.Sub(now)
+			a.snapshotTicker.Reset(timeout)
 		}
-
-		if drain && !a.snapshotTimer.Stop() {
-			<-a.snapshotTimer.C
-		}
-
-		a.snapshotTimer.Reset(timeout)
 	}
-	return a.snapshotTimer
+	return a.snapshotTicker
 }

@@ -169,11 +169,11 @@ func runAgent(ctx context.Context) error {
 	}
 
 	for {
-		nextSnapshotTimer := snapshotAgent.TakeSnapshot(ctx)
+		nextSnapshotTicker := snapshotAgent.TakeSnapshot(ctx)
 		select {
 		case <-ctx.Done():
 			os.Exit(0)
-		case <-nextSnapshotTimer.C:
+		case <-nextSnapshotTicker.C:
 			break
 		}
 	}
