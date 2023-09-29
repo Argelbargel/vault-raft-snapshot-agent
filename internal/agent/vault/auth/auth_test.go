@@ -41,7 +41,7 @@ func TestVaultAuthMethod_Login_ReturnsLeaseDuration(t *testing.T) {
 		},
 	}
 
-	leaseDuration, err := auth.Login(context.Background(), nil)
+	leaseDuration, err := auth.Login(context.Background(), &api.Client{})
 
 	assert.NoError(t, err, "Login failed unexpectedly")
 	assert.Equal(t, time.Duration(expectedLeaseDuration), leaseDuration)
@@ -57,5 +57,10 @@ func (stub authMethodStub) Login(_ context.Context, _ *api.Client) (*api.Secret,
 		return nil, stub.loginError
 	}
 
-	return &api.Secret{LeaseDuration: stub.leaseDuration}, nil
+	return &api.Secret{
+		Auth: &api.SecretAuth{
+			ClientToken:   "Test",
+			LeaseDuration: stub.leaseDuration,
+		},
+	}, nil
 }
