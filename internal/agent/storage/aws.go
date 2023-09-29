@@ -111,11 +111,12 @@ func (conf AWSStorageConfig) createClient(ctx context.Context) (*s3.Client, erro
 
 // nolint:unused
 // implements interface storage
-func (s awsStorageImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
+func (s awsStorageImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader, size int64) error {
 	input := &s3.PutObjectInput{
-		Bucket: &s.bucket,
-		Key:    aws.String(s.keyPrefix + name),
-		Body:   data,
+		Bucket:        &s.bucket,
+		Key:           aws.String(s.keyPrefix + name),
+		Body:          data,
+		ContentLength: size,
 	}
 
 	if s.sse {

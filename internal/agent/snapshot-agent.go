@@ -50,7 +50,7 @@ type snapshotAgentVaultAPI interface {
 
 type snapshotManager interface {
 	ScheduleSnapshot(ctx context.Context, lastSnapshot time.Time, defaults storage.StorageConfigDefaults) time.Time
-	UploadSnapshot(ctx context.Context, snapshot io.ReadSeeker, timestamp time.Time, defaults storage.StorageConfigDefaults) time.Time
+	UploadSnapshot(ctx context.Context, snapshot io.ReadSeeker, snapshotSize int64, timestamp time.Time, defaults storage.StorageConfigDefaults) time.Time
 }
 
 func (c SnapshotAgentConfig) HasStorages() bool {
@@ -163,7 +163,7 @@ func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Ticker {
 		return a.snapshotTicker
 	}
 
-	nextSnapshot = a.manager.UploadSnapshot(ctx, snapshot, a.lastSnapshotTime, a.storageConfigDefaults)
+	nextSnapshot = a.manager.UploadSnapshot(ctx, snapshot, 0, a.lastSnapshotTime, a.storageConfigDefaults)
 	return a.updateTicker(nextSnapshot)
 }
 

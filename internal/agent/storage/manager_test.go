@@ -51,7 +51,7 @@ func TestManagerUploadsToAllControllers(t *testing.T) {
 	}
 
 	data := "test"
-	nextSnapshot := manager.UploadSnapshot(context.Background(), strings.NewReader(data), controller1.nextSnapshot, StorageConfigDefaults{})
+	nextSnapshot := manager.UploadSnapshot(context.Background(), strings.NewReader(data), 0, controller1.nextSnapshot, StorageConfigDefaults{})
 
 	assert.Equal(t, data, controller1.uploadData)
 	assert.Equal(t, controller1.nextSnapshot, controller1.snapshotTimestamp)
@@ -71,7 +71,7 @@ func TestManagerDeletesObsoleteSnapshotsWithAllControllers(t *testing.T) {
 	}
 
 	defaults := StorageConfigDefaults{Retain: 2}
-	_ = manager.UploadSnapshot(context.Background(), strings.NewReader("test"), controller1.nextSnapshot, defaults)
+	_ = manager.UploadSnapshot(context.Background(), strings.NewReader("test"), 0, controller1.nextSnapshot, defaults)
 
 	assert.Equal(t, defaults, controller1.deleteDefaults)
 	assert.Equal(t, defaults, controller2.deleteDefaults)
@@ -92,7 +92,7 @@ func TestManagerIgnoresFactoryAndControllerFailure(t *testing.T) {
 
 	data := "test"
 	defaults := StorageConfigDefaults{}
-	nextSnapshot := manager.UploadSnapshot(context.Background(), strings.NewReader(data), controller3.nextSnapshot, defaults)
+	nextSnapshot := manager.UploadSnapshot(context.Background(), strings.NewReader(data), 0, controller3.nextSnapshot, defaults)
 
 	assert.Equal(t, data, controller3.uploadData)
 	assert.Equal(t, controller3.nextSnapshot, controller3.snapshotTimestamp)
@@ -115,7 +115,7 @@ func TestManagerIgnoresSkippedControllers(t *testing.T) {
 	}
 
 	data := "test"
-	nextSnapshot := manager.UploadSnapshot(context.Background(), strings.NewReader(data), controller2.nextSnapshot, StorageConfigDefaults{})
+	nextSnapshot := manager.UploadSnapshot(context.Background(), strings.NewReader(data), 0, controller2.nextSnapshot, StorageConfigDefaults{})
 
 	assert.Equal(t, data, controller2.uploadData)
 	assert.Equal(t, controller2.nextSnapshot, controller2.snapshotTimestamp)
@@ -132,7 +132,7 @@ func TestManagerFailsIfSnapshotCannotBeReset(t *testing.T) {
 
 	defaults := StorageConfigDefaults{Frequency: time.Second}
 	timestamp := time.Now()
-	nextSnapshot := manager.UploadSnapshot(context.Background(), ReadSeekerStub{}, timestamp, defaults)
+	nextSnapshot := manager.UploadSnapshot(context.Background(), ReadSeekerStub{}, 0, timestamp, defaults)
 
 	assert.Equal(t, timestamp.Add(defaults.Frequency), nextSnapshot)
 	assert.Zero(t, controller.uploadData)
@@ -172,7 +172,7 @@ func (stub *storageControllerStub) ScheduleSnapshot(context.Context, time.Time, 
 	return stub.nextSnapshot, nil
 }
 
-func (stub *storageControllerStub) UploadSnapshot(_ context.Context, snapshot io.Reader, timestamp time.Time, defaults StorageConfigDefaults) (bool, time.Time, error) {
+func (stub *storageControllerStub) UploadSnapshot(_ context.Context, snapshot io.Reader, _ int64, timestamp time.Time, defaults StorageConfigDefaults) (bool, time.Time, error) {
 	stub.snapshotTimestamp = timestamp
 	stub.uploadDefaults = defaults
 	if stub.uploadFails {

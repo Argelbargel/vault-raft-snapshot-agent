@@ -124,12 +124,7 @@ func TestUploadSnapshotUploadsToStorage(t *testing.T) {
 	data := "test"
 	timestamp := time.Now()
 	start := time.Now()
-	uploaded, nextSnapshot, err := controller.UploadSnapshot(
-		ctx,
-		strings.NewReader(data),
-		timestamp,
-		StorageConfigDefaults{},
-	)
+	uploaded, nextSnapshot, err := controller.UploadSnapshot(ctx, strings.NewReader(data), 0, timestamp, StorageConfigDefaults{})
 	assert.NoError(t, err, "uploadSnapshot failed unexpectedly")
 
 	assert.True(t, uploaded)
@@ -158,12 +153,7 @@ func TestUploadSnapshotHandlesStorageFailure(t *testing.T) {
 
 	ctx := context.Background()
 	timestamp := time.Now()
-	uploaded, nextSnapshot, err := controller.UploadSnapshot(
-		ctx,
-		strings.NewReader("test"),
-		timestamp,
-		StorageConfigDefaults{},
-	)
+	uploaded, nextSnapshot, err := controller.UploadSnapshot(ctx, strings.NewReader("test"), 0, timestamp, StorageConfigDefaults{})
 
 	assert.False(t, uploaded)
 	assert.Error(t, err, "uploadSnapshot should return error if storage fails")
@@ -296,12 +286,7 @@ func TestUploadSnapshotSkipsUploadBeforeScheduledTime(t *testing.T) {
 		storage:    storage,
 	}
 
-	uploaded, nextSnapshot, err := controller.UploadSnapshot(
-		context.Background(),
-		strings.NewReader("test"),
-		controller.lastUpload.Add(time.Second),
-		StorageConfigDefaults{},
-	)
+	uploaded, nextSnapshot, err := controller.UploadSnapshot(context.Background(), strings.NewReader("test"), 0, controller.lastUpload.Add(time.Second), StorageConfigDefaults{})
 	assert.NoError(t, err, "uploadSnapshot failed unexpectedly")
 
 	assert.False(t, uploaded)
@@ -328,7 +313,7 @@ type storageStub struct {
 
 // nolint:unused
 // implements interface storage
-func (stub *storageStub) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
+func (stub *storageStub) uploadSnapshot(ctx context.Context, name string, data io.Reader, _ int64) error {
 	stub.uploadContext = ctx
 	stub.uploadName = name
 	upload, err := io.ReadAll(data)

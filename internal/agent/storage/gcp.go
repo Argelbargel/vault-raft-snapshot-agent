@@ -39,7 +39,7 @@ func (conf GCPStorageConfig) CreateController(ctx context.Context) (StorageContr
 
 // nolint:unused
 // implements interface storage
-func (u gcpStorageImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
+func (u gcpStorageImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader, _ int64) error {
 	obj := u.bucket.Object(name)
 	w := obj.NewWriter(ctx)
 

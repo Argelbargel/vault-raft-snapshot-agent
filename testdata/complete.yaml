@@ -69,4 +69,13 @@ snapshots:
       domain: https://user.com
       region: test-region
       tenantId: test-tenant
+    s3:
+      endpoint: test-s3-endpoint
+      bucket: test-s3-bucket
+      accessKeyId: test-s3-key
+      accessKey: test-s3-secret
+      sessionToken: test-s3-token
+      region: test-s3-region
+      insecure: true
+
 

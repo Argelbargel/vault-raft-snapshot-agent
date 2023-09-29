@@ -15,7 +15,7 @@ import (
 func TestLocalUploadSnapshotFailsIfFileCannotBeCreated(t *testing.T) {
 	impl := localStorageImpl{"./does/not/exist"}
 
-	err := impl.uploadSnapshot(context.Background(), "test", &bytes.Buffer{})
+	err := impl.uploadSnapshot(context.Background(), "test", &bytes.Buffer{}, 0)
 
 	assert.Error(t, err, "uploadSnapshot() should fail if file could not be created!")
 }
@@ -24,7 +24,7 @@ func TestLocalUploadeSnapshotCreatesFile(t *testing.T) {
 	impl := localStorageImpl{t.TempDir()}
 	snapshotData := []byte("test")
 
-	err := impl.uploadSnapshot(context.Background(), "test.snap", bytes.NewReader(snapshotData))
+	err := impl.uploadSnapshot(context.Background(), "test.snap", bytes.NewReader(snapshotData), 0)
 
 	assert.NoError(t, err, "uploadSnapshot() failed unexpectedly!")
 
@@ -42,7 +42,7 @@ func TestLocalDeleteSnapshot(t *testing.T) {
 		_ = os.RemoveAll(filepath.Dir(impl.path))
 	}()
 
-	err := impl.uploadSnapshot(context.Background(), "test.snap", bytes.NewReader(snapshotData))
+	err := impl.uploadSnapshot(context.Background(), "test.snap", bytes.NewReader(snapshotData), 0)
 	assert.NoError(t, err, "uploadSnapshot() failed unexpectedly!")
 
 	info, err := os.Stat(fmt.Sprintf("%s/test.snap", impl.path))

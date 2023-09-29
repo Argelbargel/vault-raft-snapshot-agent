@@ -64,7 +64,7 @@ func createAzBlobClient(config AzureStorageConfig) (*azblob.Client, error) {
 
 // nolint:unused
 // implements interface storage
-func (s azureStorageImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
+func (s azureStorageImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader, _ int64) error {
 	uploadOptions := &azblob.UploadStreamOptions{
 		BlockSize:   4 * 1024 * 1024,
 		Concurrency: 16,

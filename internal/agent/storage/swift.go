@@ -82,7 +82,7 @@ func createSwiftConnection(ctx context.Context, config SwiftStorageConfig) (*swi
 
 // nolint:unused
 // implements interface storage
-func (u swiftStorageImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader) error {
+func (u swiftStorageImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader, _ int64) error {
 	_, header, err := u.conn.Container(ctx, u.container)
 	if err != nil {
 		return err
