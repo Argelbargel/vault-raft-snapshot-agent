@@ -2,6 +2,7 @@ package auth
 
 import (
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
+	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/api/auth/approle"
 )
 
@@ -12,25 +13,20 @@ type AppRoleAuthConfig struct {
 	Empty    bool
 }
 
-func createAppRoleAuth(config AppRoleAuthConfig) vaultAuthMethod[AppRoleAuthConfig, *approle.AppRoleAuth] {
-	return vaultAuthMethod[AppRoleAuthConfig, *approle.AppRoleAuth]{
-		config,
-		func(config AppRoleAuthConfig) (*approle.AppRoleAuth, error) {
-			roleId, err := config.RoleId.Resolve(true)
-			if err != nil {
-				return nil, err
-			}
-
-			secretId, err := config.SecretId.Resolve(true)
-			if err != nil {
-				return nil, err
-			}
-
-			return approle.NewAppRoleAuth(
-				roleId,
-				&approle.SecretID{FromString: secretId},
-				approle.WithMountPath(config.Path),
-			)
-		},
+func (c AppRoleAuthConfig) createAuthMethod() (api.AuthMethod, error) {
+	roleId, err := c.RoleId.Resolve(true)
+	if err != nil {
+		return nil, err
 	}
+
+	secretId, err := c.SecretId.Resolve(true)
+	if err != nil {
+		return nil, err
+	}
+
+	return approle.NewAppRoleAuth(
+		roleId,
+		&approle.SecretID{FromString: secretId},
+		approle.WithMountPath(c.Path),
+	)
 }

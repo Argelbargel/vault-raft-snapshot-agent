@@ -20,7 +20,7 @@ func TestCreateLDAPAuth(t *testing.T) {
 	)
 	assert.NoError(t, err, "NewLDAPAuth failed unexpectedly")
 
-	authMethod, err := createLDAPAuth(config).createAuthMethod()
+	authMethod, err := config.createAuthMethod()
 	assert.NoError(t, err, "createAuthMethod failed unexpectedly")
 
 	assert.Equal(t, expectedAuthMethod, authMethod)

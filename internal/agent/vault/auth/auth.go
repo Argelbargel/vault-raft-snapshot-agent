@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"fmt"
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/logging"
 	"time"
 
@@ -18,42 +17,45 @@ type VaultAuthConfig struct {
 	Kubernetes KubernetesAuthConfig `default:"{\"Empty\": true}"`
 	LDAP       LDAPAuthConfig       `default:"{\"Empty\": true}"`
 	UserPass   UserPassAuthConfig   `default:"{\"Empty\": true}"`
-	Token      secret.Secret
+	Token      Token
 }
 
 type VaultAuth[C any] interface {
 	Login(ctx context.Context, client C) (time.Duration, error)
 }
 
-type vaultAuthMethod[C any, M api.AuthMethod] struct {
-	config        C
-	methodFactory func(config C) (M, error)
+type vaultAuthMethodFactory interface {
+	createAuthMethod() (api.AuthMethod, error)
+}
+
+type vaultAuthMethod struct {
+	methodFactory vaultAuthMethodFactory
 }
 
 func CreateVaultAuth(config VaultAuthConfig) (VaultAuth[*api.Client], error) {
 	if !config.AppRole.Empty {
-		return createAppRoleAuth(config.AppRole), nil
+		return vaultAuthMethod{config.AppRole}, nil
 	} else if !config.AWS.Empty {
-		return createAWSAuth(config.AWS), nil
+		return vaultAuthMethod{config.AWS}, nil
 	} else if !config.Azure.Empty {
-		return createAzureAuth(config.Azure), nil
+		return vaultAuthMethod{config.Azure}, nil
 	} else if !config.GCP.Empty {
-		return createGCPAuth(config.GCP), nil
+		return vaultAuthMethod{config.GCP}, nil
 	} else if !config.Kubernetes.Empty {
-		return createKubernetesAuth(config.Kubernetes), nil
+		return vaultAuthMethod{config.Kubernetes}, nil
 	} else if !config.LDAP.Empty {
-		return createLDAPAuth(config.LDAP), nil
+		return vaultAuthMethod{config.LDAP}, nil
 	} else if !config.UserPass.Empty {
-		return createUserPassAuth(config.UserPass), nil
+		return vaultAuthMethod{config.UserPass}, nil
 	} else if config.Token != "" {
-		return createTokenAuth(config.Token), nil
+		return vaultAuthMethod{config.Token}, nil
 	} else {
 		return nil, fmt.Errorf("unknown authenticatin method")
 	}
 }
 
-func (am vaultAuthMethod[C, M]) Login(ctx context.Context, client *api.Client) (time.Duration, error) {
-	method, err := am.methodFactory(am.config)
+func (am vaultAuthMethod) Login(ctx context.Context, client *api.Client) (time.Duration, error) {
+	method, err := am.methodFactory.createAuthMethod()
 	if err != nil {
 		return 0, err
 	}
@@ -75,8 +77,4 @@ func (am vaultAuthMethod[C, M]) Login(ctx context.Context, client *api.Client) (
 
 	logging.Debug("Successfully logged into vault", "ttl", tokenTTL, "policies", tokenPolicies)
 	return tokenTTL, nil
-}
-
-func (am vaultAuthMethod[C, M]) createAuthMethod() (M, error) {
-	return am.methodFactory(am.config)
 }

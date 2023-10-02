@@ -28,7 +28,7 @@ func TestCreateAWSIAMAuth(t *testing.T) {
 	)
 	assert.NoError(t, err, "NewAWSAuth failed unexpectedly")
 
-	authMethod, err := createAWSAuth(config).createAuthMethod()
+	authMethod, err := config.createAuthMethod()
 	assert.NoError(t, err, "createAuthMethod failed unexpectedly")
 
 	assert.Equal(t, expectedAuthMethod, authMethod)
@@ -52,7 +52,7 @@ func TestCreateAWSEC2DefaultAuth(t *testing.T) {
 	)
 	assert.NoError(t, err, "NewAWSAuth failed unexpectedly")
 
-	authMethod, err := createAWSAuth(config).createAuthMethod()
+	authMethod, err := config.createAuthMethod()
 	assert.NoError(t, err, "createAuthMethod failed unexpectedly")
 
 	assert.Equal(t, expectedAuthMethod, authMethod)
@@ -77,7 +77,7 @@ func TestCreateAWSEC2RSA2048Auth(t *testing.T) {
 	)
 	assert.NoError(t, err, "NewAWSAuth failed unexpectedly")
 
-	authMethod, err := createAWSAuth(config).createAuthMethod()
+	authMethod, err := config.createAuthMethod()
 	assert.NoError(t, err, "createAuthMethod failed unexpectedly")
 
 	assert.Equal(t, expectedAuthMethod, authMethod)
@@ -92,6 +92,6 @@ func TestCreateAWSEC2AuthFailsForUnknownSignatureType(t *testing.T) {
 		Path:             "test-path",
 	}
 
-	_, err := createAWSAuth(config).createAuthMethod()
+	_, err := config.createAuthMethod()
 	assert.Error(t, err, "createAuthMethod did not fail for unknown signature type")
 }

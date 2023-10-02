@@ -2,16 +2,14 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
-	"time"
-
 	"github.com/hashicorp/vault/api"
 )
 
+type Token secret.Secret
+
 type tokenAuth struct {
-	token secret.Secret
+	token string
 }
 
 type tokenAuthAPI interface {
@@ -20,34 +18,28 @@ type tokenAuthAPI interface {
 	ClearToken()
 }
 
-func createTokenAuth(token secret.Secret) tokenAuth {
-	return tokenAuth{token}
+func (t Token) createAuthMethod() (api.AuthMethod, error) {
+	token, err := secret.Secret(t).Resolve(true)
+	if err != nil {
+		return nil, err
+	}
+
+	return tokenAuth{token}, nil
 }
 
-func (auth tokenAuth) Login(_ context.Context, client *api.Client) (time.Duration, error) {
+func (auth tokenAuth) Login(_ context.Context, client *api.Client) (*api.Secret, error) {
 	return auth.login(tokenAuthImpl{client})
 }
 
-func (auth tokenAuth) login(authAPI tokenAuthAPI) (time.Duration, error) {
-	token, err := auth.token.Resolve(true)
-	if err != nil {
-		return 0, err
-	}
-
-	authAPI.SetToken(token)
-	info, err := authAPI.LookupToken()
+func (auth tokenAuth) login(authAPI tokenAuthAPI) (*api.Secret, error) {
+	authAPI.SetToken(auth.token)
+	authSecret, err := authAPI.LookupToken()
 	if err != nil {
 		authAPI.ClearToken()
-		return 0, err
+		return nil, err
 	}
 
-	ttl, err := info.Data["ttl"].(json.Number).Int64()
-	if err != nil {
-		authAPI.ClearToken()
-		return 0, fmt.Errorf("error converting ttl to int: %s", err)
-	}
-
-	return time.Duration(ttl), nil
+	return authSecret, nil
 
 }
 

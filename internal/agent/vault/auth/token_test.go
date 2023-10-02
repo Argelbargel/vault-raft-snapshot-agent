@@ -1,32 +1,23 @@
 package auth
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
-	"testing"
-	"time"
-
 	"github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
-func TestCreateTokenAuth(t *testing.T) {
+func TestCreateAuthMethod(t *testing.T) {
 	expectedToken := "test"
-	authApiStub := tokenVaultAuthApiStub{}
 
-	auth := createTokenAuth(secret.FromString(expectedToken))
-
-	_, err := auth.login(&authApiStub)
-
-	assert.NoError(t, err, "token-VaultAuth failed unexpectedly")
-	assert.Equal(t, expectedToken, authApiStub.token)
+	auth, _ := Token(secret.FromString(expectedToken)).createAuthMethod()
+	assert.Equal(t, tokenAuth{expectedToken}, auth)
 }
 
 func TestTokenAuthFailsIfLoginFails(t *testing.T) {
 	authApiStub := tokenVaultAuthApiStub{loginFails: true}
-	auth := createTokenAuth("test")
+	auth := tokenAuth{"test"}
 
 	_, err := auth.login(&authApiStub)
 
@@ -36,20 +27,24 @@ func TestTokenAuthFailsIfLoginFails(t *testing.T) {
 func TestTokenAuthReturnsExpirationBasedOnLoginLeaseDuration(t *testing.T) {
 	authApiStub := tokenVaultAuthApiStub{leaseDuration: 60}
 
-	auth := createTokenAuth("test")
+	auth := tokenAuth{"test"}
 
-	leaseDuration, err := auth.login(&authApiStub)
+	authSecret, err := auth.login(&authApiStub)
 
 	assert.NoErrorf(t, err, "token-VaultAuth failed unexpectedly")
 
-	expectedDuration := time.Duration(authApiStub.leaseDuration)
-	assert.Equal(t, expectedDuration, leaseDuration, time.Millisecond)
+	expectedSecret := &api.Secret{
+		Auth: &api.SecretAuth{
+			LeaseDuration: authApiStub.leaseDuration,
+		},
+	}
+	assert.Equal(t, expectedSecret, authSecret)
 }
 
 type tokenVaultAuthApiStub struct {
 	token         string
 	loginFails    bool
-	leaseDuration int64
+	leaseDuration int
 }
 
 func (stub *tokenVaultAuthApiStub) SetToken(token string) {
@@ -66,8 +61,8 @@ func (stub *tokenVaultAuthApiStub) LookupToken() (*api.Secret, error) {
 	}
 
 	return &api.Secret{
-		Data: map[string]interface{}{
-			"ttl": json.Number(fmt.Sprint(stub.leaseDuration)),
+		Auth: &api.SecretAuth{
+			LeaseDuration: stub.leaseDuration,
 		},
 	}, nil
 }

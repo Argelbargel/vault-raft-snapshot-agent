@@ -21,7 +21,7 @@ func TestCreateAzureAuth(t *testing.T) {
 	)
 	assert.NoError(t, err, "NewAzureAuth failed unexpectedly")
 
-	authMethod, err := createAzureAuth(config).createAuthMethod()
+	authMethod, err := config.createAuthMethod()
 	assert.NoError(t, err, "createAuthMethod failed unexpectedly")
 
 	assert.Equal(t, expectedAuthMethod, authMethod)

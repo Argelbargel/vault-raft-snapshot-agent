@@ -10,11 +10,9 @@ import (
 )
 
 func TestVaultAuthMethod_Login_FailsIfMethodFactoryFails(t *testing.T) {
-	expectedErr := errors.New("methodFactory failed")
-	auth := vaultAuthMethod[any, api.AuthMethod]{
-		methodFactory: func(_ any) (api.AuthMethod, error) {
-			return nil, expectedErr
-		},
+	expectedErr := errors.New("create failed")
+	auth := vaultAuthMethod{
+		authMethodFactoryStub{createErr: expectedErr},
 	}
 
 	_, err := auth.Login(context.Background(), nil)
@@ -23,9 +21,9 @@ func TestVaultAuthMethod_Login_FailsIfMethodFactoryFails(t *testing.T) {
 
 func TestVaultAuthMethod_Login_FailsIfAuthMethodLoginFails(t *testing.T) {
 	expectedErr := errors.New("login failed")
-	auth := vaultAuthMethod[any, api.AuthMethod]{
-		methodFactory: func(_ any) (api.AuthMethod, error) {
-			return authMethodStub{loginError: expectedErr}, nil
+	auth := vaultAuthMethod{
+		authMethodFactoryStub{
+			method: authMethodStub{loginError: expectedErr},
 		},
 	}
 
@@ -35,9 +33,9 @@ func TestVaultAuthMethod_Login_FailsIfAuthMethodLoginFails(t *testing.T) {
 
 func TestVaultAuthMethod_Login_ReturnsLeaseDuration(t *testing.T) {
 	expectedLeaseDuration := 60
-	auth := vaultAuthMethod[any, api.AuthMethod]{
-		methodFactory: func(_ any) (api.AuthMethod, error) {
-			return authMethodStub{leaseDuration: expectedLeaseDuration}, nil
+	auth := vaultAuthMethod{
+		authMethodFactoryStub{
+			method: authMethodStub{leaseDuration: expectedLeaseDuration},
 		},
 	}
 
@@ -45,6 +43,18 @@ func TestVaultAuthMethod_Login_ReturnsLeaseDuration(t *testing.T) {
 
 	assert.NoError(t, err, "Login failed unexpectedly")
 	assert.Equal(t, time.Duration(expectedLeaseDuration)*time.Second, leaseDuration)
+}
+
+type authMethodFactoryStub struct {
+	method    api.AuthMethod
+	createErr error
+}
+
+func (stub authMethodFactoryStub) createAuthMethod() (api.AuthMethod, error) {
+	if stub.createErr != nil {
+		return nil, stub.createErr
+	}
+	return stub.method, nil
 }
 
 type authMethodStub struct {

@@ -21,7 +21,7 @@ func TestCreateAppRoleAuth(t *testing.T) {
 	)
 	assert.NoError(t, err, "NewAppRoleAuth failed unexpectedly")
 
-	method, err := createAppRoleAuth(config).createAuthMethod()
+	method, err := config.createAuthMethod()
 	assert.NoError(t, err, "createAuthMethod failed unexpectedly")
 
 	assert.Equal(t, expectedAuthMethod, method)
