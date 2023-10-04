@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/logging"
-	"time"
-
 	"github.com/hashicorp/vault/api"
 )
 
@@ -20,61 +18,42 @@ type VaultAuthConfig struct {
 	Token      Token
 }
 
-type VaultAuth[C any] interface {
-	Login(ctx context.Context, client C) (time.Duration, error)
-}
-
 type vaultAuthMethodFactory interface {
 	createAuthMethod() (api.AuthMethod, error)
 }
 
-type vaultAuthMethod struct {
+type vaultAuthMethodImpl struct {
 	methodFactory vaultAuthMethodFactory
 }
 
-func CreateVaultAuth(config VaultAuthConfig) (VaultAuth[*api.Client], error) {
+func CreateVaultAuth(config VaultAuthConfig) (api.AuthMethod, error) {
 	if !config.AppRole.Empty {
-		return vaultAuthMethod{config.AppRole}, nil
+		return vaultAuthMethodImpl{config.AppRole}, nil
 	} else if !config.AWS.Empty {
-		return vaultAuthMethod{config.AWS}, nil
+		return vaultAuthMethodImpl{config.AWS}, nil
 	} else if !config.Azure.Empty {
-		return vaultAuthMethod{config.Azure}, nil
+		return vaultAuthMethodImpl{config.Azure}, nil
 	} else if !config.GCP.Empty {
-		return vaultAuthMethod{config.GCP}, nil
+		return vaultAuthMethodImpl{config.GCP}, nil
 	} else if !config.Kubernetes.Empty {
-		return vaultAuthMethod{config.Kubernetes}, nil
+		return vaultAuthMethodImpl{config.Kubernetes}, nil
 	} else if !config.LDAP.Empty {
-		return vaultAuthMethod{config.LDAP}, nil
+		return vaultAuthMethodImpl{config.LDAP}, nil
 	} else if !config.UserPass.Empty {
-		return vaultAuthMethod{config.UserPass}, nil
+		return vaultAuthMethodImpl{config.UserPass}, nil
 	} else if config.Token != "" {
-		return vaultAuthMethod{config.Token}, nil
+		return vaultAuthMethodImpl{config.Token}, nil
 	} else {
 		return nil, fmt.Errorf("unknown authenticatin method")
 	}
 }
 
-func (am vaultAuthMethod) Login(ctx context.Context, client *api.Client) (time.Duration, error) {
+func (am vaultAuthMethodImpl) Login(ctx context.Context, client *api.Client) (*api.Secret, error) {
 	method, err := am.methodFactory.createAuthMethod()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	authSecret, err := client.Auth().Login(ctx, method)
-	if err != nil {
-		return 0, err
-	}
-
-	tokenTTL, err := authSecret.TokenTTL()
-	if err != nil {
-		return 0, err
-	}
-
-	tokenPolicies, err := authSecret.TokenPolicies()
-	if err != nil {
-		return 0, err
-	}
-
-	logging.Debug("Successfully logged into vault", "ttl", tokenTTL, "policies", tokenPolicies)
-	return tokenTTL, nil
+	logging.Debug("Logging into vault", "method", fmt.Sprintf("%T", method))
+	return client.Auth().Login(ctx, method)
 }

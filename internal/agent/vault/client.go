@@ -11,40 +11,35 @@ import (
 	"github.com/hashicorp/vault/api"
 )
 
-type ClientConfig struct {
+type VaultClientConfig struct {
 	Url      string        `default:"http://127.0.0.1:8200" validate:"required,http_url"`
 	Timeout  time.Duration `default:"60s"`
 	Insecure bool
 	Auth     auth.VaultAuthConfig
 }
 
-// Client is the public implementation of the client communicating with vault to authenticate and take snapshots
-type Client[CLI any, AUTH clientVaultAPIAuth[CLI]] struct {
-	api            clientVaultAPI[CLI, AUTH]
-	auth           AUTH
+// VaultClient is the public implementation of the client communicating with vault to authenticate and take snapshots
+type VaultClient struct {
+	api            vaultAPI
+	auth           api.AuthMethod
 	authExpiration time.Time
 }
 
-// internal definition of vault-api used by Client
-type clientVaultAPI[CLI any, AUTH clientVaultAPIAuth[CLI]] interface {
+// internal definition of vault-api used by VaultClient
+type vaultAPI interface {
 	Address() string
 	IsLeader() (bool, error)
 	TakeSnapshot(context.Context, io.Writer) error
-	RefreshAuth(context.Context, AUTH) (time.Duration, error)
-}
-
-// internal definition of vault-api used for authentication
-type clientVaultAPIAuth[CLI any] interface {
-	Login(context.Context, CLI) (time.Duration, error)
+	RefreshAuth(context.Context, api.AuthMethod) (time.Duration, error)
 }
 
 // internal implementation of the vault-api using a real vault-api-client
-type clientVaultAPIImpl struct {
+type vaultAPIImpl struct {
 	client *api.Client
 }
 
-// CreateClient creates a Client using an api-implementation delegation to a real vault-api-client
-func CreateClient(config ClientConfig) (*Client[*api.Client, clientVaultAPIAuth[*api.Client]], error) {
+// CreateClient creates a VaultClient using an api-implementation delegation to a real vault-api-client
+func CreateClient(config VaultClientConfig) (*VaultClient, error) {
 	impl, err := newClientVaultAPIImpl(config.Url, config.Insecure, config.Timeout)
 	if err != nil {
 		return nil, err
@@ -55,16 +50,16 @@ func CreateClient(config ClientConfig) (*Client[*api.Client, clientVaultAPIAuth[
 		return nil, err
 	}
 
-	return NewClient[*api.Client, clientVaultAPIAuth[*api.Client]](impl, vaultAuth, time.Time{}), nil
+	return NewClient(impl, vaultAuth, time.Time{}), nil
 }
 
-// NewClient creates a Client using the given api-implementation and auth
+// NewClient creates a VaultClient using the given api-implementation and auth
 // this function should only be used in tests!
-func NewClient[CLI any, AUTH clientVaultAPIAuth[CLI]](api clientVaultAPI[CLI, AUTH], auth AUTH, tokenExpiration time.Time) *Client[CLI, AUTH] {
-	return &Client[CLI, AUTH]{api, auth, tokenExpiration}
+func NewClient(api vaultAPI, auth api.AuthMethod, tokenExpiration time.Time) *VaultClient {
+	return &VaultClient{api, auth, tokenExpiration}
 }
 
-func (c *Client[CLI, AUTH]) TakeSnapshot(ctx context.Context, writer io.Writer) error {
+func (c *VaultClient) TakeSnapshot(ctx context.Context, writer io.Writer) error {
 	if err := c.refreshAuth(ctx); err != nil {
 		return err
 	}
@@ -81,7 +76,7 @@ func (c *Client[CLI, AUTH]) TakeSnapshot(ctx context.Context, writer io.Writer) 
 	return c.api.TakeSnapshot(ctx, writer)
 }
 
-func (c *Client[CLI, AUTH]) refreshAuth(ctx context.Context) error {
+func (c *VaultClient) refreshAuth(ctx context.Context) error {
 	if c.authExpiration.Before(time.Now()) {
 		leaseDuration, err := c.api.RefreshAuth(ctx, c.auth)
 		if err != nil {
@@ -94,7 +89,7 @@ func (c *Client[CLI, AUTH]) refreshAuth(ctx context.Context) error {
 }
 
 // creates a api-implementation using a real vault-api-client
-func newClientVaultAPIImpl(address string, insecure bool, timeout time.Duration) (clientVaultAPIImpl, error) {
+func newClientVaultAPIImpl(address string, insecure bool, timeout time.Duration) (vaultAPIImpl, error) {
 	apiConfig := api.DefaultConfig()
 	apiConfig.Address = address
 	apiConfig.HttpClient.Timeout = timeout
@@ -104,28 +99,28 @@ func newClientVaultAPIImpl(address string, insecure bool, timeout time.Duration)
 	}
 
 	if err := apiConfig.ConfigureTLS(tlsConfig); err != nil {
-		return clientVaultAPIImpl{}, err
+		return vaultAPIImpl{}, err
 	}
 
 	client, err := api.NewClient(apiConfig)
 	if err != nil {
-		return clientVaultAPIImpl{}, err
+		return vaultAPIImpl{}, err
 	}
 
-	return clientVaultAPIImpl{
+	return vaultAPIImpl{
 		client,
 	}, nil
 }
 
-func (impl clientVaultAPIImpl) Address() string {
+func (impl vaultAPIImpl) Address() string {
 	return impl.client.Address()
 }
 
-func (impl clientVaultAPIImpl) TakeSnapshot(ctx context.Context, writer io.Writer) error {
+func (impl vaultAPIImpl) TakeSnapshot(ctx context.Context, writer io.Writer) error {
 	return impl.client.Sys().RaftSnapshotWithContext(ctx, writer)
 }
 
-func (impl clientVaultAPIImpl) IsLeader() (bool, error) {
+func (impl vaultAPIImpl) IsLeader() (bool, error) {
 	leader, err := impl.client.Sys().Leader()
 	if err != nil {
 		return false, err
@@ -134,6 +129,22 @@ func (impl clientVaultAPIImpl) IsLeader() (bool, error) {
 	return leader.IsSelf, nil
 }
 
-func (impl clientVaultAPIImpl) RefreshAuth(ctx context.Context, auth clientVaultAPIAuth[*api.Client]) (time.Duration, error) {
-	return auth.Login(ctx, impl.client)
+func (impl vaultAPIImpl) RefreshAuth(ctx context.Context, auth api.AuthMethod) (time.Duration, error) {
+	authSecret, err := auth.Login(ctx, impl.client)
+	if err != nil {
+		return 0, err
+	}
+
+	tokenTTL, err := authSecret.TokenTTL()
+	if err != nil {
+		return 0, err
+	}
+
+	tokenPolicies, err := authSecret.TokenPolicies()
+	if err != nil {
+		return 0, err
+	}
+
+	logging.Debug("Successfully logged into vault", "ttl", tokenTTL, "policies", tokenPolicies)
+	return tokenTTL, nil
 }

@@ -15,7 +15,7 @@ import (
 
 // SnapshotAgentConfig is the root of the agent-configuration
 type SnapshotAgentConfig struct {
-	Vault     vault.ClientConfig
+	Vault     vault.VaultClientConfig
 	Snapshots SnapshotsConfig
 }
 

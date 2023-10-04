@@ -6,12 +6,11 @@ import (
 	"github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"time"
 )
 
 func TestVaultAuthMethod_Login_FailsIfMethodFactoryFails(t *testing.T) {
 	expectedErr := errors.New("create failed")
-	auth := vaultAuthMethod{
+	auth := vaultAuthMethodImpl{
 		authMethodFactoryStub{createErr: expectedErr},
 	}
 
@@ -21,7 +20,7 @@ func TestVaultAuthMethod_Login_FailsIfMethodFactoryFails(t *testing.T) {
 
 func TestVaultAuthMethod_Login_FailsIfAuthMethodLoginFails(t *testing.T) {
 	expectedErr := errors.New("login failed")
-	auth := vaultAuthMethod{
+	auth := vaultAuthMethodImpl{
 		authMethodFactoryStub{
 			method: authMethodStub{loginError: expectedErr},
 		},
@@ -32,17 +31,22 @@ func TestVaultAuthMethod_Login_FailsIfAuthMethodLoginFails(t *testing.T) {
 }
 
 func TestVaultAuthMethod_Login_ReturnsLeaseDuration(t *testing.T) {
-	expectedLeaseDuration := 60
-	auth := vaultAuthMethod{
-		authMethodFactoryStub{
-			method: authMethodStub{leaseDuration: expectedLeaseDuration},
+	expectedSecret := &api.Secret{
+		Auth: &api.SecretAuth{
+			ClientToken: "test",
 		},
 	}
 
-	leaseDuration, err := auth.Login(context.Background(), &api.Client{})
+	auth := vaultAuthMethodImpl{
+		authMethodFactoryStub{
+			method: authMethodStub{secret: expectedSecret},
+		},
+	}
+
+	authSecret, err := auth.Login(context.Background(), &api.Client{})
 
 	assert.NoError(t, err, "Login failed unexpectedly")
-	assert.Equal(t, time.Duration(expectedLeaseDuration)*time.Second, leaseDuration)
+	assert.Equal(t, expectedSecret, authSecret)
 }
 
 type authMethodFactoryStub struct {
@@ -58,8 +62,8 @@ func (stub authMethodFactoryStub) createAuthMethod() (api.AuthMethod, error) {
 }
 
 type authMethodStub struct {
-	loginError    error
-	leaseDuration int
+	loginError error
+	secret     *api.Secret
 }
 
 func (stub authMethodStub) Login(_ context.Context, _ *api.Client) (*api.Secret, error) {
@@ -67,10 +71,5 @@ func (stub authMethodStub) Login(_ context.Context, _ *api.Client) (*api.Secret,
 		return nil, stub.loginError
 	}
 
-	return &api.Secret{
-		Auth: &api.SecretAuth{
-			ClientToken:   "Test",
-			LeaseDuration: stub.leaseDuration,
-		},
-	}, nil
+	return stub.secret, nil
 }

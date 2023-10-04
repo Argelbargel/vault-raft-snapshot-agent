@@ -32,7 +32,7 @@ func TestReadCompleteConfig(t *testing.T) {
 	configFile := "../../testdata/complete.yaml"
 
 	expectedConfig := SnapshotAgentConfig{
-		Vault: vault.ClientConfig{
+		Vault: vault.VaultClientConfig{
 			Url:      "https://example.com:8200",
 			Insecure: true,
 			Timeout:  5 * time.Minute,
@@ -144,7 +144,7 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 	configFile := "../../testdata/snapshots.yaml"
 
 	expectedConfig := SnapshotAgentConfig{
-		Vault: vault.ClientConfig{
+		Vault: vault.VaultClientConfig{
 			Url:      "http://127.0.0.1:8200",
 			Insecure: false,
 			Timeout:  time.Minute,
