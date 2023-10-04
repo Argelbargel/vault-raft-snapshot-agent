@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	s3Config "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	awsCredentials "github.com/aws/aws-sdk-go-v2/credentials"
+	awsS3Manager "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	awsS3 "github.com/aws/aws-sdk-go-v2/service/s3"
+	awsS3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 type AWSStorageConfig struct {
@@ -31,7 +31,7 @@ type AWSStorageConfig struct {
 }
 
 type awsStorageImpl struct {
-	client    *s3.Client
+	client    *awsS3.Client
 	keyPrefix string
 	bucket    string
 	sse       bool
@@ -52,7 +52,7 @@ func (conf AWSStorageConfig) CreateController(ctx context.Context) (StorageContr
 		return nil, err
 	}
 
-	return newStorageController[types.Object](
+	return newStorageController[awsS3Types.Object](
 		conf.storageConfig,
 		awsStorageImpl{
 			client:    client,
@@ -64,7 +64,7 @@ func (conf AWSStorageConfig) CreateController(ctx context.Context) (StorageContr
 
 }
 
-func (conf AWSStorageConfig) createClient(ctx context.Context) (*s3.Client, error) {
+func (conf AWSStorageConfig) createClient(ctx context.Context) (*awsS3.Client, error) {
 	accessKeyId, err := conf.AccessKeyId.Resolve(false)
 	if err != nil {
 		return nil, err
@@ -85,13 +85,13 @@ func (conf AWSStorageConfig) createClient(ctx context.Context) (*s3.Client, erro
 		return nil, err
 	}
 
-	clientConfig, err := s3Config.LoadDefaultConfig(ctx, s3Config.WithRegion(region))
+	clientConfig, err := awsConfig.LoadDefaultConfig(ctx, awsConfig.WithRegion(region))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load default aws config: %w", err)
 	}
 
 	if accessKeyId != "" {
-		clientConfig.Credentials = credentials.NewStaticCredentialsProvider(accessKeyId, accessKey, sessionToken)
+		clientConfig.Credentials = awsCredentials.NewStaticCredentialsProvider(accessKeyId, accessKey, sessionToken)
 	}
 
 	endpoint, err := conf.Endpoint.Resolve(false)
@@ -99,7 +99,7 @@ func (conf AWSStorageConfig) createClient(ctx context.Context) (*s3.Client, erro
 		return nil, err
 	}
 
-	client := s3.NewFromConfig(clientConfig, func(o *s3.Options) {
+	client := awsS3.NewFromConfig(clientConfig, func(o *awsS3.Options) {
 		o.UsePathStyle = conf.ForcePathStyle
 		if conf.Endpoint != "" {
 			o.BaseEndpoint = aws.String(endpoint)
@@ -112,7 +112,7 @@ func (conf AWSStorageConfig) createClient(ctx context.Context) (*s3.Client, erro
 // nolint:unused
 // implements interface storage
 func (s awsStorageImpl) uploadSnapshot(ctx context.Context, name string, data io.Reader, size int64) error {
-	input := &s3.PutObjectInput{
+	input := &awsS3.PutObjectInput{
 		Bucket:        &s.bucket,
 		Key:           aws.String(s.keyPrefix + name),
 		Body:          data,
@@ -120,10 +120,10 @@ func (s awsStorageImpl) uploadSnapshot(ctx context.Context, name string, data io
 	}
 
 	if s.sse {
-		input.ServerSideEncryption = types.ServerSideEncryptionAes256
+		input.ServerSideEncryption = awsS3Types.ServerSideEncryptionAes256
 	}
 
-	uploader := manager.NewUploader(s.client)
+	uploader := awsS3Manager.NewUploader(s.client)
 	if _, err := uploader.Upload(ctx, input); err != nil {
 		return err
 	}
@@ -133,8 +133,8 @@ func (s awsStorageImpl) uploadSnapshot(ctx context.Context, name string, data io
 
 // nolint:unused
 // implements interface storage
-func (s awsStorageImpl) deleteSnapshot(ctx context.Context, snapshot types.Object) error {
-	input := &s3.DeleteObjectInput{
+func (s awsStorageImpl) deleteSnapshot(ctx context.Context, snapshot awsS3Types.Object) error {
+	input := &awsS3.DeleteObjectInput{
 		Bucket: &s.bucket,
 		Key:    snapshot.Key,
 	}
@@ -148,10 +148,10 @@ func (s awsStorageImpl) deleteSnapshot(ctx context.Context, snapshot types.Objec
 
 // nolint:unused
 // implements interface storage
-func (s awsStorageImpl) listSnapshots(ctx context.Context, prefix string, ext string) ([]types.Object, error) {
-	var result []types.Object
+func (s awsStorageImpl) listSnapshots(ctx context.Context, prefix string, ext string) ([]awsS3Types.Object, error) {
+	var result []awsS3Types.Object
 
-	existingSnapshotList, err := s.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+	existingSnapshotList, err := s.client.ListObjectsV2(ctx, &awsS3.ListObjectsV2Input{
 		Bucket: &s.bucket,
 		Prefix: aws.String(s.keyPrefix),
 	})
@@ -171,6 +171,6 @@ func (s awsStorageImpl) listSnapshots(ctx context.Context, prefix string, ext st
 
 // nolint:unused
 // implements interface storage
-func (s awsStorageImpl) getLastModifiedTime(snapshot types.Object) time.Time {
+func (s awsStorageImpl) getLastModifiedTime(snapshot awsS3Types.Object) time.Time {
 	return *snapshot.LastModified
 }
