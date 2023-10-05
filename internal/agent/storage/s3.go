@@ -13,15 +13,15 @@ import (
 )
 
 type S3StorageConfig struct {
-	storageConfig `mapstructure:",squash"`
-	Endpoint      string        `validate:"required_if=Empty false"`
-	Bucket        string        `validate:"required_if=Empty false"`
-	AccessKeyId   secret.Secret `default:"env://S3_ACCESS_KEY_ID"`
-	AccessKey     secret.Secret `default:"env://S3_SECRET_ACCESS_KEY" validate:"required_with=AccessKeyId"`
-	SessionToken  secret.Secret `default:"env://S3_SESSION_TOKEN"`
-	Region        secret.Secret
-	Insecure      bool
-	Empty         bool
+	StorageControllerConfig `mapstructure:",squash"`
+	Endpoint                string        `validate:"required_if=Empty false"`
+	Bucket                  string        `validate:"required_if=Empty false"`
+	AccessKeyId             secret.Secret `default:"env://S3_ACCESS_KEY_ID"`
+	AccessKey               secret.Secret `default:"env://S3_SECRET_ACCESS_KEY" validate:"required_with=AccessKeyId"`
+	SessionToken            secret.Secret `default:"env://S3_SESSION_TOKEN"`
+	Region                  secret.Secret
+	Insecure                bool
+	Empty                   bool
 }
 
 type s3StorageImpl struct {
@@ -40,7 +40,7 @@ func (conf S3StorageConfig) CreateController(ctx context.Context) (StorageContro
 	}
 
 	return newStorageController[minio.ObjectInfo](
-		conf.storageConfig,
+		conf.StorageControllerConfig,
 		s3StorageImpl{
 			client: client,
 			bucket: conf.Bucket,

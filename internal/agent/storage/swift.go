@@ -11,15 +11,15 @@ import (
 )
 
 type SwiftStorageConfig struct {
-	storageConfig `mapstructure:",squash"`
-	Container     string        `validate:"required_if=Empty false"`
-	UserName      secret.Secret `default:"env://SWIFT_USERNAME" validate:"required_if=Empty false"`
-	ApiKey        secret.Secret `default:"env://SWIFT_API_KEY" valide:"required_if=Empty false"`
-	Region        secret.Secret `default:"env://SWIFT_REGION"`
-	AuthUrl       string        `validate:"required_if=Empty false,omitempty,http_url"`
-	Domain        string        `validate:"omitempty,http_url"`
-	TenantId      string
-	Empty         bool
+	StorageControllerConfig `mapstructure:",squash"`
+	Container               string        `validate:"required_if=Empty false"`
+	UserName                secret.Secret `default:"env://SWIFT_USERNAME" validate:"required_if=Empty false"`
+	ApiKey                  secret.Secret `default:"env://SWIFT_API_KEY" valide:"required_if=Empty false"`
+	Region                  secret.Secret `default:"env://SWIFT_REGION"`
+	AuthUrl                 string        `validate:"required_if=Empty false,omitempty,http_url"`
+	Domain                  string        `validate:"omitempty,http_url"`
+	TenantId                string
+	Empty                   bool
 }
 
 type swiftStorageImpl struct {
@@ -38,7 +38,7 @@ func (conf SwiftStorageConfig) CreateController(ctx context.Context) (StorageCon
 	}
 
 	return newStorageController[swift.Object](
-		conf.storageConfig,
+		conf.StorageControllerConfig,
 		swiftStorageImpl{conn, conf.Container},
 	), nil
 }

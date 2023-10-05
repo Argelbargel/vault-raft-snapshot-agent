@@ -53,15 +53,19 @@ snapshots:
       useServerSideEncryption: true
       forcePathStyle: true
     azure:
+      retain: 0
       accountName: test-account
       accountKey: test-key
       container: test-container
       cloudDomain: blob.core.chinacloudapi.cn
     gcp:
+      retain: 1
       bucket: test-bucket
     local:
+      retain: 2
       path: .
     swift:
+      retain: 3
       container: test-container
       username: test-username
       apiKey: test-api-key
@@ -70,6 +74,7 @@ snapshots:
       region: test-region
       tenantId: test-tenant
     s3:
+      retain: 4
       endpoint: test-s3-endpoint
       bucket: test-s3-bucket
       accessKeyId: test-s3-key

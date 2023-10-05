@@ -7,9 +7,8 @@ import (
 
 type AzureAuthConfig struct {
 	Path     string `default:"azure"`
-	Role     string `validate:"required_if=Empty false"`
+	Role     string `validate:"required"`
 	Resource string
-	Empty    bool
 }
 
 func (config AzureAuthConfig) createAuthMethod() (api.AuthMethod, error) {

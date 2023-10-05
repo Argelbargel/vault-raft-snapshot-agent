@@ -49,7 +49,7 @@ func (p Parser[T]) ReadConfig(config T, file string) error {
 	}
 
 	if !config.HasStorages() {
-		return fmt.Errorf("no uploaders configured")
+		return fmt.Errorf("no storages configured")
 	}
 
 	return nil

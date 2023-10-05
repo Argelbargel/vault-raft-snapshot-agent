@@ -6,15 +6,15 @@ import (
 
 // StoragesConfig specified the configuration-section for the storages to which snapshots are uploaded
 type StoragesConfig struct {
-	AWS   AWSStorageConfig   `default:"{\"Empty\": true}"`
-	Azure AzureStorageConfig `default:"{\"Empty\": true}"`
-	GCP   GCPStorageConfig   `default:"{\"Empty\": true}"`
-	Local LocalStorageConfig `default:"{\"Empty\": true}"`
-	Swift SwiftStorageConfig `default:"{\"Empty\": true}"`
-	S3    S3StorageConfig    `default:"{\"Empty\": true}"`
+	AWS   *AWSStorageConfig
+	Azure *AzureStorageConfig
+	GCP   *GCPStorageConfig
+	Local *LocalStorageConfig
+	Swift *SwiftStorageConfig
+	S3    *S3StorageConfig
 }
 
-// StorageConfigDefaults specified the default values of storageConfig for all factories
+// StorageConfigDefaults specified the default values of StorageControllerConfig for all factories
 type StorageConfigDefaults struct {
 	Frequency       time.Duration `default:"1h"`
 	Retain          int
@@ -24,53 +24,53 @@ type StorageConfigDefaults struct {
 	TimestampFormat string        `default:"2006-01-02T15-04-05Z-0700"`
 }
 
-// storageConfig specified the values for a single controller.
+// StorageControllerConfig specifies the values for a single controller.
 // It is the base for all storage-specific configurations
-type storageConfig struct {
+type StorageControllerConfig struct {
 	Frequency       time.Duration
-	Retain          int `default:"-1"`
+	Retain          *int
 	Timeout         time.Duration
 	NamePrefix      string
 	NameSuffix      string
 	TimestampFormat string
 }
 
-func (c storageConfig) frequencyOrDefault(defaults StorageConfigDefaults) time.Duration {
+func (c StorageControllerConfig) frequencyOrDefault(defaults StorageConfigDefaults) time.Duration {
 	if c.Frequency > 0 {
 		return c.Frequency
 	}
 	return defaults.Frequency
 }
 
-func (c storageConfig) retainOrDefault(defaults StorageConfigDefaults) int {
-	if c.Retain >= 0 {
-		return c.Retain
+func (c StorageControllerConfig) retainOrDefault(defaults StorageConfigDefaults) int {
+	if c.Retain != nil {
+		return *c.Retain
 	}
 	return defaults.Retain
 }
 
-func (c storageConfig) timeoutOrDefault(defaults StorageConfigDefaults) time.Duration {
+func (c StorageControllerConfig) timeoutOrDefault(defaults StorageConfigDefaults) time.Duration {
 	if c.Timeout > 0 {
 		return c.Timeout
 	}
 	return defaults.Timeout
 }
 
-func (c storageConfig) namePrefixOrDefault(defaults StorageConfigDefaults) string {
+func (c StorageControllerConfig) namePrefixOrDefault(defaults StorageConfigDefaults) string {
 	if c.NamePrefix != "" {
 		return c.NamePrefix
 	}
 	return defaults.NamePrefix
 }
 
-func (c storageConfig) nameSuffixOrDefault(defaults StorageConfigDefaults) string {
+func (c StorageControllerConfig) nameSuffixOrDefault(defaults StorageConfigDefaults) string {
 	if c.NameSuffix != "" {
 		return c.NameSuffix
 	}
 	return defaults.NameSuffix
 }
 
-func (c storageConfig) timestampFormatOrDefault(defaults StorageConfigDefaults) string {
+func (c StorageControllerConfig) timestampFormatOrDefault(defaults StorageConfigDefaults) string {
 	if c.TimestampFormat != "" {
 		return c.TimestampFormat
 	}

@@ -8,9 +8,8 @@ import (
 
 type KubernetesAuthConfig struct {
 	Path     string        `default:"kubernetes"`
-	Role     string        `validate:"required_if=Empty false"`
-	JWTToken secret.Secret `default:"file:///var/run/secrets/kubernetes.io/serviceaccount/token" validate:"required_if=Empty false"`
-	Empty    bool
+	Role     string        `validate:"required"`
+	JWTToken secret.Secret `default:"file:///var/run/secrets/kubernetes.io/serviceaccount/token" validate:"required"`
 }
 
 func (config KubernetesAuthConfig) createAuthMethod() (api.AuthMethod, error) {

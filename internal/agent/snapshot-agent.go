@@ -58,7 +58,7 @@ func (c SnapshotAgentConfig) HasStorages() bool {
 }
 
 func (c SnapshotsConfig) HasStorages() bool {
-	return !(c.Storages.AWS.Empty && c.Storages.Azure.Empty && c.Storages.GCP.Empty && c.Storages.Local.Empty)
+	return c.Storages.AWS != nil || c.Storages.Azure != nil || c.Storages.GCP != nil || c.Storages.Local != nil || c.Storages.Swift != nil || c.Storages.S3 != nil
 }
 
 func CreateSnapshotAgent(ctx context.Context, options SnapshotAgentOptions) (*SnapshotAgent, error) {

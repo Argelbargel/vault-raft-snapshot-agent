@@ -26,12 +26,12 @@ type StorageController interface {
 	// ScheduleSnapshot schedules the next upload to the controlled storage.
 	// If the time of the last upload can not be determined by the controller,
 	// it may use the time of the last snapshot given as fallback
-	// For the case that the storageConfig of the controller does not specify one of its fields,
+	// For the case that the StorageControllerConfig of the controller does not specify one of its fields,
 	// StorageConfigDefaults is passed.
 	ScheduleSnapshot(ctx context.Context, lastSnapshot time.Time, defaults StorageConfigDefaults) (time.Time, error)
 	// UploadSnapshot uploads the given snapshot to the controlled storage, if the timestamp of the snapshot
 	// corresponds with its scheduled upload-date.
-	// For the case that the storageConfig of the controller does not specify one of its fields,
+	// For the case that the StorageControllerConfig of the controller does not specify one of its fields,
 	// StorageConfigDefaults is passed.
 	UploadSnapshot(ctx context.Context, snapshot io.Reader, snapshotSize int64, timestamp time.Time, defaults StorageConfigDefaults) (bool, time.Time, error)
 	DeleteObsoleteSnapshots(ctx context.Context, defaults StorageConfigDefaults) (int, error)
@@ -42,22 +42,22 @@ type StorageController interface {
 func CreateManager(storageConfig StoragesConfig) *Manager {
 	manager := &Manager{}
 
-	if !storageConfig.AWS.Empty {
+	if storageConfig.AWS != nil {
 		manager.AddStorageFactory(storageConfig.AWS)
 	}
-	if !storageConfig.Azure.Empty {
+	if storageConfig.Azure != nil {
 		manager.AddStorageFactory(storageConfig.Azure)
 	}
-	if !storageConfig.GCP.Empty {
+	if storageConfig.GCP != nil {
 		manager.AddStorageFactory(storageConfig.GCP)
 	}
-	if !storageConfig.Local.Empty {
+	if storageConfig.Local != nil {
 		manager.AddStorageFactory(storageConfig.Local)
 	}
-	if !storageConfig.Swift.Empty {
+	if storageConfig.Swift != nil {
 		manager.AddStorageFactory(storageConfig.Swift)
 	}
-	if !storageConfig.S3.Empty {
+	if storageConfig.S3 != nil {
 		manager.AddStorageFactory(storageConfig.S3)
 	}
 

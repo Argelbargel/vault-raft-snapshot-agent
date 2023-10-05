@@ -8,9 +8,8 @@ import (
 
 type UserPassAuthConfig struct {
 	Path     string        `default:"userpass"`
-	Username secret.Secret `validate:"required_if=Empty false"`
-	Password secret.Secret `validate:"required_if=Empty false"`
-	Empty    bool
+	Username secret.Secret `validate:"required"`
+	Password secret.Secret `validate:"required"`
 }
 
 func (config UserPassAuthConfig) createAuthMethod() (api.AuthMethod, error) {

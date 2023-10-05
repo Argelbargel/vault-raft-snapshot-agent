@@ -8,14 +8,14 @@ import (
 )
 
 type VaultAuthConfig struct {
-	AppRole    AppRoleAuthConfig    `default:"{\"Empty\": true}"`
-	AWS        AWSAuthConfig        `default:"{\"Empty\": true}"`
-	Azure      AzureAuthConfig      `default:"{\"Empty\": true}"`
-	GCP        GCPAuthConfig        `default:"{\"Empty\": true}"`
-	Kubernetes KubernetesAuthConfig `default:"{\"Empty\": true}"`
-	LDAP       LDAPAuthConfig       `default:"{\"Empty\": true}"`
-	UserPass   UserPassAuthConfig   `default:"{\"Empty\": true}"`
-	Token      Token
+	AppRole    *AppRoleAuthConfig
+	AWS        *AWSAuthConfig
+	Azure      *AzureAuthConfig
+	GCP        *GCPAuthConfig
+	Kubernetes *KubernetesAuthConfig
+	LDAP       *LDAPAuthConfig
+	UserPass   *UserPassAuthConfig
+	Token      *Token
 }
 
 type vaultAuthMethodFactory interface {
@@ -27,21 +27,21 @@ type vaultAuthMethodImpl struct {
 }
 
 func CreateVaultAuth(config VaultAuthConfig) (api.AuthMethod, error) {
-	if !config.AppRole.Empty {
+	if config.AppRole != nil {
 		return vaultAuthMethodImpl{config.AppRole}, nil
-	} else if !config.AWS.Empty {
+	} else if config.AWS != nil {
 		return vaultAuthMethodImpl{config.AWS}, nil
-	} else if !config.Azure.Empty {
+	} else if config.Azure != nil {
 		return vaultAuthMethodImpl{config.Azure}, nil
-	} else if !config.GCP.Empty {
+	} else if config.GCP != nil {
 		return vaultAuthMethodImpl{config.GCP}, nil
-	} else if !config.Kubernetes.Empty {
+	} else if config.Kubernetes != nil {
 		return vaultAuthMethodImpl{config.Kubernetes}, nil
-	} else if !config.LDAP.Empty {
+	} else if config.LDAP != nil {
 		return vaultAuthMethodImpl{config.LDAP}, nil
-	} else if !config.UserPass.Empty {
+	} else if config.UserPass != nil {
 		return vaultAuthMethodImpl{config.UserPass}, nil
-	} else if config.Token != "" {
+	} else if config.Token != nil {
 		return vaultAuthMethodImpl{config.Token}, nil
 	} else {
 		return nil, fmt.Errorf("unknown authenticatin method")

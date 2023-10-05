@@ -2,6 +2,7 @@ package agent
 
 import (
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/test"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -37,40 +38,40 @@ func TestReadCompleteConfig(t *testing.T) {
 			Insecure: true,
 			Timeout:  5 * time.Minute,
 			Auth: auth.VaultAuthConfig{
-				AppRole: auth.AppRoleAuthConfig{
+				AppRole: &auth.AppRoleAuthConfig{
 					Path:     "test-approle-path",
 					RoleId:   "test-approle",
 					SecretId: "test-approle-secret",
 				},
-				AWS: auth.AWSAuthConfig{
+				AWS: &auth.AWSAuthConfig{
 					Path:             "test-aws-path",
 					Role:             "test-aws-role",
 					Region:           "test-region",
 					EC2Nonce:         "test-nonce",
 					EC2SignatureType: auth.AWS_EC2_RSA2048,
 				},
-				Azure: auth.AzureAuthConfig{
+				Azure: &auth.AzureAuthConfig{
 					Path:     "test-azure-path",
 					Role:     "test-azure-role",
 					Resource: "test-resource",
 				},
-				GCP: auth.GCPAuthConfig{
+				GCP: &auth.GCPAuthConfig{
 					Path:                "test-gcp-path",
 					Role:                "test-gcp-role",
 					ServiceAccountEmail: "test@example.com",
 				},
-				Kubernetes: auth.KubernetesAuthConfig{
+				Kubernetes: &auth.KubernetesAuthConfig{
 					Role:     "test-kubernetes-role",
 					Path:     "test-kubernetes-path",
 					JWTToken: secret.FromFile(relativeTo(configFile, "./jwt")),
 				},
-				LDAP: auth.LDAPAuthConfig{
+				LDAP: &auth.LDAPAuthConfig{
 					Path:     "test-ldap-path",
 					Username: "test-ldap-user",
 					Password: "test-ldap-pass",
 				},
-				Token: "test-token",
-				UserPass: auth.UserPassAuthConfig{
+				Token: test.PtrTo[auth.Token]("test-token"),
+				UserPass: &auth.UserPassAuthConfig{
 					Path:     "test-userpass-path",
 					Username: "test-user",
 					Password: "test-pass",
@@ -87,7 +88,7 @@ func TestReadCompleteConfig(t *testing.T) {
 				TimestampFormat: "2006-01-02",
 			},
 			Storages: storage.StoragesConfig{
-				AWS: storage.AWSStorageConfig{
+				AWS: &storage.AWSStorageConfig{
 					AccessKeyId:             "test-key",
 					AccessKey:               "test-secret",
 					SessionToken:            "test-session",
@@ -98,19 +99,31 @@ func TestReadCompleteConfig(t *testing.T) {
 					UseServerSideEncryption: true,
 					ForcePathStyle:          true,
 				},
-				Azure: storage.AzureStorageConfig{
+				Azure: &storage.AzureStorageConfig{
+					StorageControllerConfig: storage.StorageControllerConfig{
+						Retain: test.PtrTo(0),
+					},
 					AccountName: "test-account",
 					AccountKey:  "test-key",
 					Container:   "test-container",
 					CloudDomain: "blob.core.chinacloudapi.cn",
 				},
-				GCP: storage.GCPStorageConfig{
+				GCP: &storage.GCPStorageConfig{
+					StorageControllerConfig: storage.StorageControllerConfig{
+						Retain: test.PtrTo(1),
+					},
 					Bucket: "test-bucket",
 				},
-				Local: storage.LocalStorageConfig{
+				Local: &storage.LocalStorageConfig{
+					StorageControllerConfig: storage.StorageControllerConfig{
+						Retain: test.PtrTo(2),
+					},
 					Path: ".",
 				},
-				Swift: storage.SwiftStorageConfig{
+				Swift: &storage.SwiftStorageConfig{
+					StorageControllerConfig: storage.StorageControllerConfig{
+						Retain: test.PtrTo(3),
+					},
 					Container: "test-container",
 					UserName:  "test-username",
 					ApiKey:    "test-api-key",
@@ -119,7 +132,10 @@ func TestReadCompleteConfig(t *testing.T) {
 					Region:    "test-region",
 					TenantId:  "test-tenant",
 				},
-				S3: storage.S3StorageConfig{
+				S3: &storage.S3StorageConfig{
+					StorageControllerConfig: storage.StorageControllerConfig{
+						Retain: test.PtrTo(4),
+					},
 					Endpoint:     "test-s3-endpoint",
 					Bucket:       "test-s3-bucket",
 					AccessKeyId:  "test-s3-key",
@@ -149,36 +165,10 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 			Insecure: false,
 			Timeout:  time.Minute,
 			Auth: auth.VaultAuthConfig{
-				AppRole: auth.AppRoleAuthConfig{
-					Path:  "approle",
-					Empty: true,
-				},
-				AWS: auth.AWSAuthConfig{
-					Path:             "aws",
-					EC2SignatureType: auth.AWS_EC2_PKCS7,
-					Region:           secret.FromEnv("AWS_DEFAULT_REGION"),
-					Empty:            true,
-				},
-				Azure: auth.AzureAuthConfig{
-					Path:  "azure",
-					Empty: true,
-				},
-				GCP: auth.GCPAuthConfig{
-					Path:  "gcp",
-					Empty: true,
-				},
-				Kubernetes: auth.KubernetesAuthConfig{
+				Kubernetes: &auth.KubernetesAuthConfig{
 					Role:     "test-role",
 					Path:     "kubernetes",
 					JWTToken: secret.FromFile(relativeTo(configFile, "./jwt")),
-				},
-				LDAP: auth.LDAPAuthConfig{
-					Path:  "ldap",
-					Empty: true,
-				},
-				UserPass: auth.UserPassAuthConfig{
-					Path:  "userpass",
-					Empty: true,
 				},
 			},
 		},
@@ -192,35 +182,8 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 				TimestampFormat: "2006-01-02T15-04-05Z-0700",
 			},
 			Storages: storage.StoragesConfig{
-				AWS: storage.AWSStorageConfig{
-					AccessKeyId:  secret.FromEnv("AWS_ACCESS_KEY_ID"),
-					AccessKey:    secret.FromEnv("AWS_SECRET_ACCESS_KEY"),
-					SessionToken: secret.FromEnv("AWS_SESSION_TOKEN"),
-					Region:       secret.FromEnv("AWS_DEFAULT_REGION"),
-					Endpoint:     secret.FromEnv("AWS_ENDPOINT_URL"),
-					Empty:        true,
-				},
-				Azure: storage.AzureStorageConfig{
-					AccountName: secret.FromEnv("AZURE_STORAGE_ACCOUNT"),
-					AccountKey:  secret.FromEnv("AZURE_STORAGE_KEY"),
-					CloudDomain: "blob.core.windows.net",
-					Empty:       true,
-				},
-				GCP: storage.GCPStorageConfig{Empty: true},
-				Local: storage.LocalStorageConfig{
+				Local: &storage.LocalStorageConfig{
 					Path: ".",
-				},
-				Swift: storage.SwiftStorageConfig{
-					UserName: secret.FromEnv("SWIFT_USERNAME"),
-					ApiKey:   secret.FromEnv("SWIFT_API_KEY"),
-					Region:   secret.FromEnv("SWIFT_REGION"),
-					Empty:    true,
-				},
-				S3: storage.S3StorageConfig{
-					AccessKeyId:  secret.FromEnv("S3_ACCESS_KEY_ID"),
-					AccessKey:    secret.FromEnv("S3_SECRET_ACCESS_KEY"),
-					SessionToken: secret.FromEnv("S3_SESSION_TOKEN"),
-					Empty:        true,
 				},
 			},
 		},

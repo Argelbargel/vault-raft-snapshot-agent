@@ -7,9 +7,8 @@ import (
 
 type GCPAuthConfig struct {
 	Path                string `default:"gcp"`
-	Role                string `validate:"required_if=Empty false"`
+	Role                string `validate:"required"`
 	ServiceAccountEmail string
-	Empty               bool
 }
 
 func (config GCPAuthConfig) createAuthMethod() (api.AuthMethod, error) {

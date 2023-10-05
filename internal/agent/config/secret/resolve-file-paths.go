@@ -35,7 +35,7 @@ func resolveSecretFilePaths(value reflect.Value, baseDir string) error {
 	for i := 0; i < t.NumField(); i++ {
 		f := value.Field(i)
 
-		if !f.CanSet() {
+		if f.IsZero() || !f.CanSet() {
 			continue
 		}
 

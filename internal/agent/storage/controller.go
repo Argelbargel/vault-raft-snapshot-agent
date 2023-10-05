@@ -12,9 +12,9 @@ import (
 
 // storageControllerImpl implements StorageController.
 // Access to the storage-location is delegated to the given storage.
-// Options like upload-frequency, snapshot-naming are configured by the given storageControllerConfig.
+// Options like upload-frequency, snapshot-naming are configured by the given StorageControllerConfig.
 type storageControllerImpl[S any] struct {
-	config     storageControllerConfig
+	config     StorageControllerConfig
 	storage    storage[S]
 	lastUpload time.Time
 }
@@ -27,20 +27,9 @@ type storage[S any] interface {
 	getLastModifiedTime(snapshot S) time.Time
 }
 
-// storageControllerConfig defines the interface used by storageControllerImpl to determine its required configuration
-// options either from the storageConfig for the controlled storage or the global StorageConfigDefaults for all storages
-type storageControllerConfig interface {
-	frequencyOrDefault(StorageConfigDefaults) time.Duration
-	retainOrDefault(StorageConfigDefaults) int
-	timeoutOrDefault(StorageConfigDefaults) time.Duration
-	namePrefixOrDefault(StorageConfigDefaults) string
-	nameSuffixOrDefault(StorageConfigDefaults) string
-	timestampFormatOrDefault(StorageConfigDefaults) string
-}
-
 // newStorageController creates a new storageControllerImpl uploading snapshots to the
-// given storage configured according to the given storageControllerConfig
-func newStorageController[S any](config storageControllerConfig, storage storage[S]) *storageControllerImpl[S] {
+// given storage configured according to the given StorageControllerConfig
+func newStorageController[S any](config StorageControllerConfig, storage storage[S]) *storageControllerImpl[S] {
 	return &storageControllerImpl[S]{
 		config:  config,
 		storage: storage,
@@ -119,7 +108,7 @@ func (u *storageControllerImpl[S]) listSnapshots(ctx context.Context, prefix str
 	}
 
 	slices.SortFunc(snapshots, func(a, b S) int {
-		return u.storage.getLastModifiedTime(a).Compare(u.storage.getLastModifiedTime(b))
+		return u.storage.getLastModifiedTime(a).Compare(u.storage.getLastModifiedTime(b)) * -1
 	})
 
 	return snapshots, nil

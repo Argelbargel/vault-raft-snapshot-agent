@@ -12,9 +12,8 @@ import (
 )
 
 type GCPStorageConfig struct {
-	storageConfig `mapstructure:",squash"`
-	Bucket        string `validate:"required_if=Empty false"`
-	Empty         bool
+	StorageControllerConfig `mapstructure:",squash"`
+	Bucket                  string `validate:"required"`
 }
 
 type gcpStorageImpl struct {
@@ -32,7 +31,7 @@ func (conf GCPStorageConfig) CreateController(ctx context.Context) (StorageContr
 	}
 
 	return newStorageController[gcpStorage.ObjectAttrs](
-		conf.storageConfig,
+		conf.StorageControllerConfig,
 		gcpStorageImpl{client.Bucket(conf.Bucket)},
 	), nil
 }
