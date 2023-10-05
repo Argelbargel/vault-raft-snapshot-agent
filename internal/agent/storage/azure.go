@@ -12,12 +12,11 @@ import (
 )
 
 type AzureStorageConfig struct {
-	storageConfig `mapstructure:",squash"`
-	AccountName   secret.Secret `default:"env://AZURE_STORAGE_ACCOUNT" validate:"required_if=Empty false"`
-	AccountKey    secret.Secret `default:"env://AZURE_STORAGE_KEY" validate:"required_if=Empty false"`
-	Container     string        `validate:"required_if=Empty false"`
-	CloudDomain   string        `default:"blob.core.windows.net" validate:"required_if=Empty false"`
-	Empty         bool
+	StorageControllerConfig `mapstructure:",squash"`
+	AccountName             secret.Secret `default:"env://AZURE_STORAGE_ACCOUNT" validate:"required"`
+	AccountKey              secret.Secret `default:"env://AZURE_STORAGE_KEY" validate:"required"`
+	Container               string        `validate:"required"`
+	CloudDomain             string        `default:"blob.core.windows.net" validate:"required"`
 }
 
 type azureStorageImpl struct {
@@ -36,7 +35,7 @@ func (conf AzureStorageConfig) CreateController(context.Context) (StorageControl
 	}
 
 	return newStorageController[*container.BlobItem](
-		conf.storageConfig,
+		conf.StorageControllerConfig,
 		azureStorageImpl{client, conf.Container},
 	), nil
 

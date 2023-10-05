@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/test"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"strings"
@@ -13,10 +14,8 @@ import (
 
 func TestScheduleSnapshotPrefersLastUploadTimeAndStorageConfig(t *testing.T) {
 	lastUploadTime := time.Now()
-	config := storageConfigStub{
-		storageConfig{
-			Frequency: time.Minute,
-		},
+	config := StorageControllerConfig{
+		Frequency: time.Minute,
 	}
 
 	controller := &storageControllerImpl[time.Time]{
@@ -36,7 +35,7 @@ func TestScheduleSnapshotFallsBackOnStorageConfigDefaults(t *testing.T) {
 	}
 
 	controller := &storageControllerImpl[time.Time]{
-		config:     storageConfigStub{},
+		config:     StorageControllerConfig{},
 		lastUpload: lastUploadTime,
 	}
 
@@ -47,10 +46,8 @@ func TestScheduleSnapshotFallsBackOnStorageConfigDefaults(t *testing.T) {
 
 func TestScheduleSnapshotFallsBackOnLastSnapshotTime(t *testing.T) {
 	lastSnapshotTime := time.Now()
-	config := storageConfigStub{
-		storageConfig{
-			Frequency: time.Minute,
-		},
+	config := StorageControllerConfig{
+		Frequency: time.Minute,
 	}
 
 	controller := &storageControllerImpl[time.Time]{
@@ -64,10 +61,8 @@ func TestScheduleSnapshotFallsBackOnLastSnapshotTime(t *testing.T) {
 
 func TestScheduleSnapshotFallsBackOnStorageLastModifiedTime(t *testing.T) {
 	storageLastModifiedTime := time.Now()
-	config := storageConfigStub{
-		storageConfig{
-			Frequency: time.Minute,
-		},
+	config := StorageControllerConfig{
+		Frequency: time.Minute,
 	}
 
 	storage := &storageStub{
@@ -85,10 +80,8 @@ func TestScheduleSnapshotFallsBackOnStorageLastModifiedTime(t *testing.T) {
 }
 
 func TestScheduleSnapshotReturnsZeroIfNoFallbackPossible(t *testing.T) {
-	config := storageConfigStub{
-		storageConfig{
-			Frequency: time.Minute,
-		},
+	config := StorageControllerConfig{
+		Frequency: time.Minute,
 	}
 
 	storage := &storageStub{}
@@ -104,14 +97,12 @@ func TestScheduleSnapshotReturnsZeroIfNoFallbackPossible(t *testing.T) {
 }
 
 func TestUploadSnapshotUploadsToStorage(t *testing.T) {
-	config := storageConfigStub{
-		storageConfig{
-			Frequency:       time.Minute,
-			NamePrefix:      "test",
-			NameSuffix:      ".test",
-			TimestampFormat: "2006-01-02T15-04-05Z",
-			Timeout:         time.Millisecond * 500,
-		},
+	config := StorageControllerConfig{
+		Frequency:       time.Minute,
+		NamePrefix:      "test",
+		NameSuffix:      ".test",
+		TimestampFormat: "2006-01-02T15-04-05Z",
+		Timeout:         time.Millisecond * 500,
 	}
 
 	storage := &storageStub{}
@@ -139,10 +130,8 @@ func TestUploadSnapshotUploadsToStorage(t *testing.T) {
 }
 
 func TestUploadSnapshotHandlesStorageFailure(t *testing.T) {
-	config := storageConfigStub{
-		storageConfig{
-			Frequency: time.Minute,
-		},
+	config := StorageControllerConfig{
+		Frequency: time.Minute,
 	}
 
 	storage := &storageStub{uploadFails: true}
@@ -161,12 +150,10 @@ func TestUploadSnapshotHandlesStorageFailure(t *testing.T) {
 }
 
 func TestDeletesObsoleteSnapshots(t *testing.T) {
-	config := storageConfigStub{
-		storageConfig{
-			Retain:     2,
-			NamePrefix: "test",
-			NameSuffix: ".text",
-		},
+	config := StorageControllerConfig{
+		Retain:     test.PtrTo(2),
+		NamePrefix: "test",
+		NameSuffix: ".text",
 	}
 
 	now := time.Now()
@@ -182,22 +169,20 @@ func TestDeletesObsoleteSnapshots(t *testing.T) {
 	assert.NoError(t, err, "DeleteObsoleteSnapshots failed unexpectedly")
 
 	assert.Equal(t, 2, deleted)
-	assert.Equal(t, []time.Time{now.Add(time.Second), now.Add(time.Second * 2)}, storage.snapshots)
+	assert.Equal(t, []time.Time{now.Add(time.Hour), now.Add(time.Minute)}, storage.snapshots)
 	assert.Equal(t, config.NamePrefix, storage.listPrefix)
 	assert.Equal(t, config.NameSuffix, storage.listSuffix)
 }
 
 func TestDeleteObsoleteSnapshotsIgnoresFailures(t *testing.T) {
-	config := storageConfigStub{
-		storageConfig{
-			Retain: 2,
-		},
+	config := StorageControllerConfig{
+		Retain: test.PtrTo(2),
 	}
 
 	now := time.Now()
 	storage := &storageStub{
 		snapshots:      []time.Time{now.Add(time.Minute), now.Add(time.Second), now.Add(time.Hour), now.Add(time.Second * 2)},
-		deleteFailures: []time.Time{now.Add(time.Hour)},
+		deleteFailures: []time.Time{now.Add(time.Second)},
 	}
 	controller := &storageControllerImpl[time.Time]{
 		config:  config,
@@ -208,14 +193,12 @@ func TestDeleteObsoleteSnapshotsIgnoresFailures(t *testing.T) {
 	assert.NoError(t, err, "DeleteObsoleteSnapshots failed unexpectedly")
 
 	assert.Equal(t, 1, deleted)
-	assert.Equal(t, []time.Time{now.Add(time.Second), now.Add(time.Second * 2), now.Add(time.Hour)}, storage.snapshots)
+	assert.Equal(t, []time.Time{now.Add(time.Hour), now.Add(time.Minute), now.Add(time.Second)}, storage.snapshots)
 }
 
 func TestDeleteObsoleteSnapshotsSkipsWhenNothingToRetain(t *testing.T) {
-	config := storageConfigStub{
-		storageConfig{
-			Retain: 0,
-		},
+	config := StorageControllerConfig{
+		Retain: test.PtrTo(0),
 	}
 
 	now := time.Now()
@@ -233,10 +216,8 @@ func TestDeleteObsoleteSnapshotsSkipsWhenNothingToRetain(t *testing.T) {
 }
 
 func TestDeleteObsoleteSnapshotsHandlesStorageFailure(t *testing.T) {
-	config := storageConfigStub{
-		storageConfig{
-			Retain: 1,
-		},
+	config := StorageControllerConfig{
+		Retain: test.PtrTo(1),
 	}
 
 	storage := &storageStub{listFails: true}
@@ -251,11 +232,9 @@ func TestDeleteObsoleteSnapshotsHandlesStorageFailure(t *testing.T) {
 }
 
 func TestDeleteObsoleteSnapshotsSkipsWhenNothingToDelete(t *testing.T) {
-	config := storageConfigStub{
-		storageConfig{
-			Retain:     1,
-			NamePrefix: "test",
-		},
+	config := StorageControllerConfig{
+		Retain:     test.PtrTo(1),
+		NamePrefix: "test",
 	}
 
 	storage := &storageStub{snapshots: []time.Time{time.Now().Add(time.Minute)}}
@@ -273,10 +252,8 @@ func TestDeleteObsoleteSnapshotsSkipsWhenNothingToDelete(t *testing.T) {
 }
 
 func TestUploadSnapshotSkipsUploadBeforeScheduledTime(t *testing.T) {
-	config := storageConfigStub{
-		storageConfig{
-			Frequency: time.Minute,
-		},
+	config := StorageControllerConfig{
+		Frequency: time.Minute,
 	}
 
 	storage := &storageStub{}
@@ -292,10 +269,6 @@ func TestUploadSnapshotSkipsUploadBeforeScheduledTime(t *testing.T) {
 	assert.False(t, uploaded)
 	assert.Equal(t, controller.lastUpload.Add(config.Frequency), nextSnapshot)
 	assert.Zero(t, storage.uploadContext)
-}
-
-type storageConfigStub struct {
-	storageConfig
 }
 
 type storageStub struct {

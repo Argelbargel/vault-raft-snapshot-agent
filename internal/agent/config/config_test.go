@@ -10,12 +10,12 @@ import (
 )
 
 type configDataStub struct {
-	hasUploaders bool
-	Vault        struct {
+	hasStorages bool
+	Vault       struct {
 		Url  string `validate:"required"`
 		Test string
 	}
-	Uploaders struct {
+	Storages struct {
 		AWS struct {
 			Credentials struct {
 				Key    string
@@ -26,7 +26,7 @@ type configDataStub struct {
 }
 
 func (stub configDataStub) HasStorages() bool {
-	return stub.hasUploaders
+	return stub.hasStorages
 }
 
 func TestReadConfigBindsEnvVariables(t *testing.T) {
@@ -35,7 +35,7 @@ func TestReadConfigBindsEnvVariables(t *testing.T) {
 	t.Setenv("VAULT_ADDR", "http://from.env:8200")
 	t.Setenv("TEST_VAULT_TEST", "test")
 
-	data := configDataStub{hasUploaders: true}
+	data := configDataStub{hasStorages: true}
 	err := parser.ReadConfig(&data, "")
 	assert.NoError(t, err, "ReadConfig failed unexpectedly")
 
@@ -48,7 +48,7 @@ func TestFailsOnMissingConfigFile(t *testing.T) {
 
 	t.Setenv("VAULT_ADDR", "http://from.env:8200")
 
-	data := configDataStub{hasUploaders: true}
+	data := configDataStub{hasStorages: true}
 	err := parser.ReadConfig(&data, "./missing.yaml")
 	assert.Error(t, err, "ReadConfig should fail for missing config-file")
 }
@@ -56,26 +56,26 @@ func TestFailsOnMissingConfigFile(t *testing.T) {
 func TestFailsForInvalidConfiguration(t *testing.T) {
 	parser := NewParser[*configDataStub]("TEST", "")
 
-	data := configDataStub{hasUploaders: true}
+	data := configDataStub{hasStorages: true}
 	err := parser.ReadConfig(&data, "")
 	assert.Error(t, err, "ReadConfig should fail for invalid configuration")
 }
 
-func TestFailsOnMissingUploaders(t *testing.T) {
+func TestFailsOnMissingStorages(t *testing.T) {
 	parser := NewParser[*configDataStub]("TEST", "")
 
 	t.Setenv("VAULT_ADDR", "http://from.env:8200")
 
-	data := configDataStub{hasUploaders: false}
+	data := configDataStub{hasStorages: false}
 	err := parser.ReadConfig(&data, "")
-	assert.Error(t, err, "ReadConfig should fail for missing uploaders")
+	assert.Error(t, err, "ReadConfig should fail for missing storages")
 }
 
 func TestOnConfigChangePassesConfigToHandler(t *testing.T) {
 	parser := NewParser[*configDataStub]("TEST", "")
 
 	configFile := fmt.Sprintf("%s/config.json", t.TempDir())
-	config := configDataStub{hasUploaders: true}
+	config := configDataStub{hasStorages: true}
 
 	err := test.WriteFile(t, configFile, "{\"vault\":{\"url\": \"test\"}}")
 	assert.NoError(t, err, "writing config file failed unexpectedly")
@@ -86,7 +86,7 @@ func TestOnConfigChangePassesConfigToHandler(t *testing.T) {
 	assert.Equal(t, "test", config.Vault.Url)
 
 	configCh := make(chan configDataStub, 1)
-	errCh := parser.OnConfigChange(&configDataStub{hasUploaders: true}, func(c *configDataStub) error {
+	errCh := parser.OnConfigChange(&configDataStub{hasStorages: true}, func(c *configDataStub) error {
 		configCh <- *c
 		return nil
 	})
@@ -106,7 +106,7 @@ func TestOnConfigChangeIgnoresInvalidConfiguration(t *testing.T) {
 	parser := NewParser[*configDataStub]("TEST", "")
 
 	configFile := fmt.Sprintf("%s/config.json", t.TempDir())
-	config := configDataStub{hasUploaders: true}
+	config := configDataStub{hasStorages: true}
 
 	err := test.WriteFile(t, configFile, "{\"vault\":{\"url\": \"test\"}}")
 	assert.NoError(t, err, "writing config file failed unexpectedly")
@@ -115,7 +115,7 @@ func TestOnConfigChangeIgnoresInvalidConfiguration(t *testing.T) {
 	assert.NoError(t, err, "ReadConfig failed unexpectedly")
 	assert.Equal(t, "test", config.Vault.Url)
 
-	newConfig := configDataStub{hasUploaders: true}
+	newConfig := configDataStub{hasStorages: true}
 	errCh := parser.OnConfigChange(&newConfig, func(c *configDataStub) error {
 		c.Vault.Url = "new"
 		return nil

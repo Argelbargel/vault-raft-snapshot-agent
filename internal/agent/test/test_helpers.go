@@ -21,3 +21,7 @@ func WriteFile(t *testing.T, dest string, contents string) error {
 		return os.WriteFile(dest, []byte(contents), 0644)
 	}
 }
+
+func PtrTo[T any](v T) *T {
+	return &v
+}

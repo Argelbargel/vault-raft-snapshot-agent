@@ -11,9 +11,8 @@ import (
 )
 
 type LocalStorageConfig struct {
-	storageConfig `mapstructure:",squash"`
-	Path          string `validate:"required_if=Empty false,omitempty,dir"`
-	Empty         bool
+	StorageControllerConfig `mapstructure:",squash"`
+	Path                    string `validate:"required,dir"`
 }
 
 type localStorageImpl struct {
@@ -26,7 +25,7 @@ func (conf LocalStorageConfig) Destination() string {
 
 func (conf LocalStorageConfig) CreateController(context.Context) (StorageController, error) {
 	return newStorageController[os.FileInfo](
-		conf.storageConfig,
+		conf.StorageControllerConfig,
 		localStorageImpl{
 			path: conf.Path,
 		},

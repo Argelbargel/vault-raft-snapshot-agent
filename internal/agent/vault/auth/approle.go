@@ -8,9 +8,8 @@ import (
 
 type AppRoleAuthConfig struct {
 	Path     string        `default:"approle"`
-	RoleId   secret.Secret `mapstructure:"role" validate:"required_if=Empty false"`
-	SecretId secret.Secret `mapstructure:"secret" validate:"required_if=Empty false"`
-	Empty    bool
+	RoleId   secret.Secret `mapstructure:"role" validate:"required"`
+	SecretId secret.Secret `mapstructure:"secret" validate:"required"`
 }
 
 func (c AppRoleAuthConfig) createAuthMethod() (api.AuthMethod, error) {

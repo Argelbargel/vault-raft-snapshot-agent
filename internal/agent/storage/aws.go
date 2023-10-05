@@ -17,17 +17,16 @@ import (
 )
 
 type AWSStorageConfig struct {
-	storageConfig           `mapstructure:",squash"`
+	StorageControllerConfig `mapstructure:",squash"`
 	AccessKeyId             secret.Secret `default:"env://AWS_ACCESS_KEY_ID"`
 	AccessKey               secret.Secret `default:"env://AWS_SECRET_ACCESS_KEY" validate:"required_with=AccessKeyId"`
 	SessionToken            secret.Secret `default:"env://AWS_SESSION_TOKEN"`
 	Region                  secret.Secret `default:"env://AWS_DEFAULT_REGION"`
 	Endpoint                secret.Secret `default:"env://AWS_ENDPOINT_URL"`
-	Bucket                  string        `validate:"required_if=Empty false"`
+	Bucket                  string        `validate:"required"`
 	KeyPrefix               string        `mapstructure:",omitifempty"`
 	UseServerSideEncryption bool
 	ForcePathStyle          bool
-	Empty                   bool
 }
 
 type awsStorageImpl struct {
@@ -53,7 +52,7 @@ func (conf AWSStorageConfig) CreateController(ctx context.Context) (StorageContr
 	}
 
 	return newStorageController[awsS3Types.Object](
-		conf.storageConfig,
+		conf.StorageControllerConfig,
 		awsStorageImpl{
 			client:    client,
 			keyPrefix: keyPrefix,

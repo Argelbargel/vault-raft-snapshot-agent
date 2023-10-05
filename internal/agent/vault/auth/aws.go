@@ -22,7 +22,6 @@ type AWSAuthConfig struct {
 	Role              string
 	EC2SignatureType  AWSSignatureType `default:"pkcs7"`
 	IAMServerIDHeader string
-	Empty             bool
 }
 
 func (c AWSAuthConfig) createAuthMethod() (api.AuthMethod, error) {

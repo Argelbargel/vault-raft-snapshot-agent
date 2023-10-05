@@ -8,9 +8,8 @@ import (
 
 type LDAPAuthConfig struct {
 	Path     string        `default:"ldap"`
-	Username secret.Secret `validate:"required_if=Empty false"`
-	Password secret.Secret `validate:"required_if=Empty false"`
-	Empty    bool
+	Username secret.Secret `validate:"required"`
+	Password secret.Secret `validate:"required"`
 }
 
 func (config LDAPAuthConfig) createAuthMethod() (api.AuthMethod, error) {
