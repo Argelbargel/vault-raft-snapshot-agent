@@ -2,6 +2,7 @@ package auth
 
 import (
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
+	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/api/auth/userpass"
 )
 
@@ -12,24 +13,19 @@ type UserPassAuthConfig struct {
 	Empty    bool
 }
 
-func createUserPassAuth(config UserPassAuthConfig) vaultAuthMethod[UserPassAuthConfig, *userpass.UserpassAuth] {
-	return vaultAuthMethod[UserPassAuthConfig, *userpass.UserpassAuth]{
-		config,
-		func(config UserPassAuthConfig) (*userpass.UserpassAuth, error) {
-			username, err := config.Username.Resolve(true)
-			if err != nil {
-				return nil, err
-			}
-			password, err := config.Password.Resolve(true)
-			if err != nil {
-				return nil, err
-			}
-
-			return userpass.NewUserpassAuth(
-				username,
-				&userpass.Password{FromString: password},
-				userpass.WithMountPath(config.Path),
-			)
-		},
+func (config UserPassAuthConfig) createAuthMethod() (api.AuthMethod, error) {
+	username, err := config.Username.Resolve(true)
+	if err != nil {
+		return nil, err
 	}
+	password, err := config.Password.Resolve(true)
+	if err != nil {
+		return nil, err
+	}
+
+	return userpass.NewUserpassAuth(
+		username,
+		&userpass.Password{FromString: password},
+		userpass.WithMountPath(config.Path),
+	)
 }

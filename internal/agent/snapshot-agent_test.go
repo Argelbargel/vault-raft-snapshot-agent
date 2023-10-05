@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/storage"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/vault"
+	"github.com/hashicorp/vault/api"
 	"io"
 	"testing"
 	"time"
@@ -257,8 +258,8 @@ func TestUpdateReschedulesSnapshots(t *testing.T) {
 	assert.Equal(t, newManager, agent.manager)
 }
 
-func newClient(api *clientVaultAPIStub) *vault.Client[any, clientVaultAPIAuthStub] {
-	return vault.NewClient[any, clientVaultAPIAuthStub](api, clientVaultAPIAuthStub{}, time.Time{})
+func newClient(api *clientVaultAPIStub) *vault.VaultClient {
+	return vault.NewClient(api, clientVaultAPIAuthStub{}, time.Time{})
 }
 
 type clientVaultAPIStub struct {
@@ -297,14 +298,15 @@ func (stub *clientVaultAPIStub) IsLeader() (bool, error) {
 	return stub.leader, nil
 }
 
-func (stub *clientVaultAPIStub) RefreshAuth(ctx context.Context, auth clientVaultAPIAuthStub) (time.Duration, error) {
-	return auth.Login(ctx, nil)
+func (stub *clientVaultAPIStub) RefreshAuth(ctx context.Context, auth api.AuthMethod) (time.Duration, error) {
+	_, err := auth.Login(ctx, nil)
+	return 0, err
 }
 
 type clientVaultAPIAuthStub struct{}
 
-func (stub clientVaultAPIAuthStub) Login(_ context.Context, _ any) (time.Duration, error) {
-	return 0, nil
+func (stub clientVaultAPIAuthStub) Login(_ context.Context, _ *api.Client) (*api.Secret, error) {
+	return nil, nil
 }
 
 type storageControllerFactoryStub struct {

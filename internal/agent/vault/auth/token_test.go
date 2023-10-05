@@ -1,73 +1,69 @@
 package auth
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
-	"fmt"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
-	"testing"
-	"time"
-
 	"github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
-func TestCreateTokenAuth(t *testing.T) {
+func TestCreateAuthMethod(t *testing.T) {
 	expectedToken := "test"
-	authApiStub := tokenVaultAuthApiStub{}
 
-	auth := createTokenAuth(secret.FromString(expectedToken))
-
-	_, err := auth.login(&authApiStub)
-
-	assert.NoError(t, err, "token-VaultAuth failed unexpectedly")
-	assert.Equal(t, expectedToken, authApiStub.token)
+	auth, _ := Token(secret.FromString(expectedToken)).createAuthMethod()
+	assert.Equal(t, tokenAuth{expectedToken}, auth)
 }
 
 func TestTokenAuthFailsIfLoginFails(t *testing.T) {
-	authApiStub := tokenVaultAuthApiStub{loginFails: true}
-	auth := createTokenAuth("test")
+	client := &api.Client{}
+	lookup := tokenLookupStub{lookupFails: true}
+	auth := tokenAuth{"test"}
 
-	_, err := auth.login(&authApiStub)
+	_, err := auth.login(context.Background(), client, &lookup)
 
 	assert.Error(t, err, "token-VaultAuth did not report error although login failed!")
+	assert.Equal(t, auth.token, lookup.token)
+	assert.Zero(t, client.Token())
 }
 
 func TestTokenAuthReturnsExpirationBasedOnLoginLeaseDuration(t *testing.T) {
-	authApiStub := tokenVaultAuthApiStub{leaseDuration: 60}
+	client := &api.Client{}
+	lookup := tokenLookupStub{leaseDuration: 60}
 
-	auth := createTokenAuth("test")
+	auth := tokenAuth{"test"}
 
-	leaseDuration, err := auth.login(&authApiStub)
+	authSecret, err := auth.login(context.Background(), client, &lookup)
 
 	assert.NoErrorf(t, err, "token-VaultAuth failed unexpectedly")
 
-	expectedDuration := time.Duration(authApiStub.leaseDuration)
-	assert.Equal(t, expectedDuration, leaseDuration, time.Millisecond)
+	expectedSecret := &api.Secret{
+		Auth: &api.SecretAuth{
+			LeaseDuration: lookup.leaseDuration,
+		},
+	}
+
+	assert.Equal(t, expectedSecret, authSecret)
+	assert.Equal(t, auth.token, client.Token())
 }
 
-type tokenVaultAuthApiStub struct {
+type tokenLookupStub struct {
+	lookupFails   bool
+	leaseDuration int
 	token         string
-	loginFails    bool
-	leaseDuration int64
 }
 
-func (stub *tokenVaultAuthApiStub) SetToken(token string) {
-	stub.token = token
-}
+func (stub *tokenLookupStub) Lookup(_ context.Context, client *api.Client) (*api.Secret, error) {
+	stub.token = client.Token()
 
-func (stub *tokenVaultAuthApiStub) ClearToken() {
-	stub.token = ""
-}
-
-func (stub *tokenVaultAuthApiStub) LookupToken() (*api.Secret, error) {
-	if stub.loginFails {
-		return &api.Secret{}, errors.New("lookup failed")
+	if stub.lookupFails {
+		return nil, errors.New("lookup failed")
 	}
 
 	return &api.Secret{
-		Data: map[string]interface{}{
-			"ttl": json.Number(fmt.Sprint(stub.leaseDuration)),
+		Auth: &api.SecretAuth{
+			LeaseDuration: stub.leaseDuration,
 		},
 	}, nil
 }

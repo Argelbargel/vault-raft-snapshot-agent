@@ -27,7 +27,7 @@ func TestCreateKubernetesAuth(t *testing.T) {
 	)
 	assert.NoError(t, err, "NewKubernetesAuth failed unexpectedly")
 
-	authMethod, err := createKubernetesAuth(config).createAuthMethod()
+	authMethod, err := config.createAuthMethod()
 	assert.NoError(t, err, "createKubernetesAuth failed unexpectedly")
 
 	assert.Equal(t, expectedAuthMethod, authMethod)

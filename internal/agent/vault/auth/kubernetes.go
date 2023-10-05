@@ -2,6 +2,7 @@ package auth
 
 import (
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
+	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/api/auth/kubernetes"
 )
 
@@ -12,21 +13,16 @@ type KubernetesAuthConfig struct {
 	Empty    bool
 }
 
-func createKubernetesAuth(config KubernetesAuthConfig) vaultAuthMethod[KubernetesAuthConfig, *kubernetes.KubernetesAuth] {
-	return vaultAuthMethod[KubernetesAuthConfig, *kubernetes.KubernetesAuth]{
-		config,
-		func(config KubernetesAuthConfig) (*kubernetes.KubernetesAuth, error) {
-			token, err := config.JWTToken.Resolve(true)
-			if err != nil {
-				return nil, err
-			}
-
-			var loginOpts = []kubernetes.LoginOption{
-				kubernetes.WithMountPath(config.Path),
-				kubernetes.WithServiceAccountToken(token),
-			}
-
-			return kubernetes.NewKubernetesAuth(config.Role, loginOpts...)
-		},
+func (config KubernetesAuthConfig) createAuthMethod() (api.AuthMethod, error) {
+	token, err := config.JWTToken.Resolve(true)
+	if err != nil {
+		return nil, err
 	}
+
+	var loginOpts = []kubernetes.LoginOption{
+		kubernetes.WithMountPath(config.Path),
+		kubernetes.WithServiceAccountToken(token),
+	}
+
+	return kubernetes.NewKubernetesAuth(config.Role, loginOpts...)
 }

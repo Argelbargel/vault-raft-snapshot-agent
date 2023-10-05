@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
+	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/api/auth/aws"
 )
 
@@ -24,49 +25,44 @@ type AWSAuthConfig struct {
 	Empty             bool
 }
 
-func createAWSAuth(config AWSAuthConfig) vaultAuthMethod[AWSAuthConfig, *aws.AWSAuth] {
-	return vaultAuthMethod[AWSAuthConfig, *aws.AWSAuth]{
-		config,
-		func(config AWSAuthConfig) (*aws.AWSAuth, error) {
-			var loginOpts = []aws.LoginOption{aws.WithMountPath(config.Path)}
+func (c AWSAuthConfig) createAuthMethod() (api.AuthMethod, error) {
+	var loginOpts = []aws.LoginOption{aws.WithMountPath(c.Path)}
 
-			if !config.EC2Nonce.IsZero() {
-				nonce, err := config.EC2Nonce.Resolve(true)
-				if err != nil {
-					return nil, err
-				}
-				loginOpts = append(loginOpts, aws.WithNonce(nonce), aws.WithEC2Auth())
-				switch config.EC2SignatureType {
-				case "":
-				case AWS_EC2_PKCS7:
-				case AWS_ECS_IDENTITY:
-					loginOpts = append(loginOpts, aws.WithIdentitySignature())
-				case AWS_EC2_RSA2048:
-					loginOpts = append(loginOpts, aws.WithRSA2048Signature())
-				default:
-					return nil, fmt.Errorf("unknown signature-type %s", config.EC2SignatureType)
-				}
-			} else {
-				loginOpts = append(loginOpts, aws.WithIAMAuth())
-				if config.IAMServerIDHeader != "" {
-					loginOpts = append(loginOpts, aws.WithIAMServerIDHeader(config.IAMServerIDHeader))
-				}
-			}
-
-			region, err := config.Region.Resolve(false)
-			if err != nil {
-				return nil, err
-			}
-
-			if region != "" {
-				loginOpts = append(loginOpts, aws.WithRegion(region))
-			}
-
-			if config.Role != "" {
-				loginOpts = append(loginOpts, aws.WithRole(config.Role))
-			}
-
-			return aws.NewAWSAuth(loginOpts...)
-		},
+	if !c.EC2Nonce.IsZero() {
+		nonce, err := c.EC2Nonce.Resolve(true)
+		if err != nil {
+			return nil, err
+		}
+		loginOpts = append(loginOpts, aws.WithNonce(nonce), aws.WithEC2Auth())
+		switch c.EC2SignatureType {
+		case "":
+		case AWS_EC2_PKCS7:
+		case AWS_ECS_IDENTITY:
+			loginOpts = append(loginOpts, aws.WithIdentitySignature())
+		case AWS_EC2_RSA2048:
+			loginOpts = append(loginOpts, aws.WithRSA2048Signature())
+		default:
+			return nil, fmt.Errorf("unknown signature-type %s", c.EC2SignatureType)
+		}
+	} else {
+		loginOpts = append(loginOpts, aws.WithIAMAuth())
+		if c.IAMServerIDHeader != "" {
+			loginOpts = append(loginOpts, aws.WithIAMServerIDHeader(c.IAMServerIDHeader))
+		}
 	}
+
+	region, err := c.Region.Resolve(false)
+	if err != nil {
+		return nil, err
+	}
+
+	if region != "" {
+		loginOpts = append(loginOpts, aws.WithRegion(region))
+	}
+
+	if c.Role != "" {
+		loginOpts = append(loginOpts, aws.WithRole(c.Role))
+	}
+
+	return aws.NewAWSAuth(loginOpts...)
 }

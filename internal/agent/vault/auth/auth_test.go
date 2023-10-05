@@ -6,15 +6,12 @@ import (
 	"github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"time"
 )
 
 func TestVaultAuthMethod_Login_FailsIfMethodFactoryFails(t *testing.T) {
-	expectedErr := errors.New("methodFactory failed")
-	auth := vaultAuthMethod[any, api.AuthMethod]{
-		methodFactory: func(_ any) (api.AuthMethod, error) {
-			return nil, expectedErr
-		},
+	expectedErr := errors.New("create failed")
+	auth := vaultAuthMethodImpl{
+		authMethodFactoryStub{createErr: expectedErr},
 	}
 
 	_, err := auth.Login(context.Background(), nil)
@@ -23,9 +20,9 @@ func TestVaultAuthMethod_Login_FailsIfMethodFactoryFails(t *testing.T) {
 
 func TestVaultAuthMethod_Login_FailsIfAuthMethodLoginFails(t *testing.T) {
 	expectedErr := errors.New("login failed")
-	auth := vaultAuthMethod[any, api.AuthMethod]{
-		methodFactory: func(_ any) (api.AuthMethod, error) {
-			return authMethodStub{loginError: expectedErr}, nil
+	auth := vaultAuthMethodImpl{
+		authMethodFactoryStub{
+			method: authMethodStub{loginError: expectedErr},
 		},
 	}
 
@@ -34,22 +31,39 @@ func TestVaultAuthMethod_Login_FailsIfAuthMethodLoginFails(t *testing.T) {
 }
 
 func TestVaultAuthMethod_Login_ReturnsLeaseDuration(t *testing.T) {
-	expectedLeaseDuration := 60
-	auth := vaultAuthMethod[any, api.AuthMethod]{
-		methodFactory: func(_ any) (api.AuthMethod, error) {
-			return authMethodStub{leaseDuration: expectedLeaseDuration}, nil
+	expectedSecret := &api.Secret{
+		Auth: &api.SecretAuth{
+			ClientToken: "test",
 		},
 	}
 
-	leaseDuration, err := auth.Login(context.Background(), &api.Client{})
+	auth := vaultAuthMethodImpl{
+		authMethodFactoryStub{
+			method: authMethodStub{secret: expectedSecret},
+		},
+	}
+
+	authSecret, err := auth.Login(context.Background(), &api.Client{})
 
 	assert.NoError(t, err, "Login failed unexpectedly")
-	assert.Equal(t, time.Duration(expectedLeaseDuration)*time.Second, leaseDuration)
+	assert.Equal(t, expectedSecret, authSecret)
+}
+
+type authMethodFactoryStub struct {
+	method    api.AuthMethod
+	createErr error
+}
+
+func (stub authMethodFactoryStub) createAuthMethod() (api.AuthMethod, error) {
+	if stub.createErr != nil {
+		return nil, stub.createErr
+	}
+	return stub.method, nil
 }
 
 type authMethodStub struct {
-	loginError    error
-	leaseDuration int
+	loginError error
+	secret     *api.Secret
 }
 
 func (stub authMethodStub) Login(_ context.Context, _ *api.Client) (*api.Secret, error) {
@@ -57,10 +71,5 @@ func (stub authMethodStub) Login(_ context.Context, _ *api.Client) (*api.Secret,
 		return nil, stub.loginError
 	}
 
-	return &api.Secret{
-		Auth: &api.SecretAuth{
-			ClientToken:   "Test",
-			LeaseDuration: stub.leaseDuration,
-		},
-	}, nil
+	return stub.secret, nil
 }

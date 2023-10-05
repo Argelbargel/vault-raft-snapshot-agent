@@ -2,67 +2,56 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
-	"time"
-
 	"github.com/hashicorp/vault/api"
+	"time"
 )
 
+type Token secret.Secret
+
 type tokenAuth struct {
-	token secret.Secret
+	token string
 }
 
-type tokenAuthAPI interface {
-	SetToken(token string)
-	LookupToken() (*api.Secret, error)
-	ClearToken()
+type tokenLookup interface {
+	Lookup(context.Context, *api.Client) (*api.Secret, error)
 }
 
-func createTokenAuth(token secret.Secret) tokenAuth {
-	return tokenAuth{token}
-}
+func (t Token) createAuthMethod() (api.AuthMethod, error) {
 
-func (auth tokenAuth) Login(_ context.Context, client *api.Client) (time.Duration, error) {
-	return auth.login(tokenAuthImpl{client})
-}
-
-func (auth tokenAuth) login(authAPI tokenAuthAPI) (time.Duration, error) {
-	token, err := auth.token.Resolve(true)
+	token, err := secret.Secret(t).Resolve(true)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	authAPI.SetToken(token)
-	info, err := authAPI.LookupToken()
+	return tokenAuth{token}, nil
+}
+
+func (auth tokenAuth) Login(ctx context.Context, client *api.Client) (*api.Secret, error) {
+	return auth.login(ctx, client, vaultTokenLookup{})
+}
+
+func (auth tokenAuth) login(ctx context.Context, client *api.Client, lookup tokenLookup) (*api.Secret, error) {
+	client.SetToken(auth.token)
+
+	authSecret, err := lookup.Lookup(ctx, client)
 	if err != nil {
-		authAPI.ClearToken()
-		return 0, err
+		client.ClearToken()
+		return nil, err
 	}
 
-	ttl, err := info.Data["ttl"].(json.Number).Int64()
-	if err != nil {
-		authAPI.ClearToken()
-		return 0, fmt.Errorf("error converting ttl to int: %s", err)
+	if authSecret.Auth == nil {
+		authSecret.Auth = &api.SecretAuth{
+			LeaseDuration: int(24 * time.Hour.Seconds()),
+			ClientToken:   auth.token,
+		}
 	}
 
-	return time.Duration(ttl), nil
-
+	return authSecret, nil
 }
 
-type tokenAuthImpl struct {
-	client *api.Client
-}
+type vaultTokenLookup struct{}
 
-func (impl tokenAuthImpl) SetToken(token string) {
-	impl.client.SetToken(token)
-}
-
-func (impl tokenAuthImpl) LookupToken() (*api.Secret, error) {
-	return impl.client.Auth().Token().LookupSelf()
-}
-
-func (impl tokenAuthImpl) ClearToken() {
-	impl.client.ClearToken()
+func (impl vaultTokenLookup) Lookup(ctx context.Context, client *api.Client) (*api.Secret, error) {
+	return client.Auth().Token().LookupSelfWithContext(ctx)
 }

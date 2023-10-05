@@ -20,7 +20,7 @@ func TestCreateGCPGCEAuth(t *testing.T) {
 	)
 	assert.NoError(t, err, "NewGCPAuth failed unexpectedly")
 
-	authMethod, err := createGCPAuth(config).createAuthMethod()
+	authMethod, err := config.createAuthMethod()
 	assert.NoError(t, err, "createAuthMethod failed unexpectedly")
 
 	assert.Equal(t, expectedAuthMethod, authMethod)
@@ -40,7 +40,7 @@ func TestCreateGCPIAMAuth(t *testing.T) {
 	)
 	assert.NoError(t, err, "NewGCPAuth failed unexpectedly")
 
-	authMethod, err := createGCPAuth(config).createAuthMethod()
+	authMethod, err := config.createAuthMethod()
 	assert.NoError(t, err, "createAuthMethod failed unexpectedly")
 
 	assert.Equal(t, expectedAuthMethod, authMethod)
