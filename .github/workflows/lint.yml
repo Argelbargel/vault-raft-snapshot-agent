@@ -26,4 +26,5 @@ jobs:
       with:
         go_version: '${{ steps.go-version.outputs.version }}'
         fail_on_error: true
+        reporter: github-check
         golangci_lint_flags: -v --timeout=3m
