@@ -13,20 +13,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
     - name: Read go-version
       id: go-version
       run: |
         echo "version=$(sed -n 's/^go\s*\([\d.]*\)/\1/p' go.mod)" >> "$GITHUB_OUTPUT"
 
-    - uses: actions/setup-go@v4
-      with:
-        go-version: '${{ steps.go-version.outputs.version }}'
-        cache: false
-
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
+      uses: reviewdog/action-golangci-lint@v2
       with:
-        version: latest
-        only-new-issues: false
-        install-mode: "goinstall"
-        args: -v --timeout=3m
+        go_version: '${{ steps.go-version.outputs.version }}'
+        fail_on_error: true
+        golangci_lint_flags: -v --timeout=3m
