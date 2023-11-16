@@ -1,4 +1,4 @@
-FROM --platform=$TARGETPLATFORM alpine:3.1.4-r0
+FROM --platform=$TARGETPLATFORM alpine:3.1.4-r1
 
 LABEL org.opencontainers.image.source=https://github.com/Argelbargel/vault-raft-snapshot-agent
 LABEL org.opencontainers.image.description="vault-raft-snapshot-agent ($TARGETPLATFORM)"
