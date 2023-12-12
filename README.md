@@ -10,7 +10,7 @@ store the snapshots locally or upload them to a remote storage backend like AWS 
 or user errors. This agent automates [vault's manual standard backup procedure](https://developer.hashicorp.com/vault/tutorials/standard-procedures/sop-backup#manual-backup-procedures) for a single vault cluster or clusters with disaster recovery.
 
 ## Restoring a Snapshot
-In case of failure just follow the [standard restore procedure](https://developer.hashicorp.com/vault/tutorials/standard-procedures/sop-restore#procedures) for your cluster's type using the last snapshot created by the agent from your backup storage.
+In case of failure just follow the [standard restore procedure](https://developer.hashicorp.com/vault/tutorials/standard-procedures/sop-restore#procedures) for your cluster type using the last snapshot created by the agent from your backup storage.
 
 ## Running
 
