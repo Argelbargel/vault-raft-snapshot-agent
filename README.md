@@ -7,7 +7,7 @@ Vault Raft Snapshot Agent is a Go binary that takes periodic snapshots of a [Vau
 cluster using
 the [integrated raft storage backend](https://developer.hashicorp.com/vault/docs/concepts/integrated-storage). It can
 store the snapshots locally or upload them to a remote storage backend like AWS S3 as backup in case of system failure
-or user errors. This agent basically automates [vault's standard backup procedure](https://developer.hashicorp.com/vault/tutorials/standard-procedures/sop-backup#manual-backup-procedures) for a single vault cluster or clusters with disaster recovery.
+or user errors. This agent automates [vault's manuel standard backup procedure](https://developer.hashicorp.com/vault/tutorials/standard-procedures/sop-backup#manual-backup-procedures) for a single vault cluster or clusters with disaster recovery.
 
 ## Restoring a Snapshot
 In case of failure just follow the [standard restore procedure](https://developer.hashicorp.com/vault/tutorials/standard-procedures/sop-restore#procedures) for your cluster's type using the last snapshot created by the agent from your backup storage.
