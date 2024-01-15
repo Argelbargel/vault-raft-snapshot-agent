@@ -14,6 +14,12 @@ In case of failure just follow the [standard restore procedure](https://develope
 
 ## Running
 
+### Helm-Chart
+
+If you're running on kubernetes, you can use the
+provided [Helm-Charts](https://argelbargel.github.io/vault-raft-snapshot-agent-helm/) to install Vault Raft Snapshot
+Agent into your cluster.
+
 ### Container-Image
 
 You can run the agent with the supplied container-image, e.g. via docker:
@@ -21,12 +27,6 @@ You can run the agent with the supplied container-image, e.g. via docker:
 ```
 docker run -v <path to snapshot.json>:/etc/vault.d/snapshot.json" ghcr.io/argelbargel/vault-raft-snapshot-agent:latest
 ```
-
-### Helm-Chart
-
-If you're running on kubernetes, you can use the
-provided [Helm-Charts](https://argelbargel.github.io/vault-raft-snapshot-agent-helm/) to install Vault Raft Snapshot
-Agent into your cluster.
 
 ### systemd-service
 
