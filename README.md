@@ -116,7 +116,7 @@ Additionally Vault Raft Snapshot Agent supports static configuration via environ
 
 In contrast to values specified via the configuration file, these environment variables are read
 once at startup only and the configuration will not be reloaded when their values change, 
-except those speficied as [external property sources/Secret](#secrets-and-external-property-sources) below which always reflect the currently configured value.
+except those specified as [external property sources/Secret](#secrets-and-external-property-sources) below which always reflect the currently configured value.
 
 **Options specified via environment-variables take precedence before the values specified in the configuration file -
 even those specified as [external property sources/Secret](#secrets-and-external-property-sources)!**
