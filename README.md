@@ -106,7 +106,7 @@ You can specify most [command-line options](#command-line-options-and-logging) v
 | `VRSA_LOG_LEVEL=<level>`   | [--log-level](#cli-log-level)     |
 | `VRSA_LOG_OUTPUT=<output>` | [--log-output](#cli-log-output)   |
 
-Vault Raft Snapshot Agent supports static configuration via environment variables:
+Additionally Vault Raft Snapshot Agent supports static configuration via environment variables alongside its configuration file:
 
 - for setting the [address of the vault-server](#cnf-vault-url) you can use `VAULT_ADDR`.
 - any other [configuration option](#configuration) can be set by prefixing `VRSA_` to the upper-cased path to the key  
@@ -114,12 +114,12 @@ Vault Raft Snapshot Agent supports static configuration via environment variable
   For example `VRSA_SNAPSHOTS_FREQUENCY=<value>` configures the [snapshot-frequency](#cnf-snapshots-frequency) and
   `VRSA_VAULT_AUTH_TOKEN=<value>` configures the [token authentication](#cnf-vault-auth-token) for vault.
 
-Other than the [external property sources](#secrets-and-external-property-sources), these environment variables are read
-once at startup only and the
-configuration will not be reloaded when their values change.
+In contrast to values specified via the configuration file, these environment variables are read
+once at startup only and the configuration will not be reloaded when their values change, 
+except those speficied as [external property sources/Secret](#secrets-and-external-property-sources) below which always reflect the currently configured value.
 
 **Options specified via environment-variables take precedence before the values specified in the configuration file -
-even those specified as [external property sources](#secrets-and-external-property-sources)!**
+even those specified as [external property sources/Secret](#secrets-and-external-property-sources)!**
 
 ## Configuration
 
