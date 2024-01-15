@@ -30,7 +30,7 @@ docker run -v <path to snapshot.json>:/etc/vault.d/snapshot.json" ghcr.io/argelb
 
 ### systemd-service
 
-The recommended way of running this daemon is using systemctl, since it handles restarts and failure scenarios quite
+If you want to use the plain binary, the recommended way of running this daemon is using systemctl, since it handles restarts and failure scenarios quite
 well. To learn more about systemctl,
 checkout [this article](https://www.digitalocean.com/community/tutorials/how-to-use-systemctl-to-manage-systemd-services-and-units).
 begin, create the following file at `/etc/systemd/system/snapshot.service`:
