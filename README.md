@@ -7,9 +7,18 @@ Vault Raft Snapshot Agent is a Go binary that takes periodic snapshots of a [Vau
 cluster using
 the [integrated raft storage backend](https://developer.hashicorp.com/vault/docs/concepts/integrated-storage). It can
 store the snapshots locally or upload them to a remote storage backend like AWS S3 as backup in case of system failure
-or user errors.
+or user errors. This agent automates [vault's manual standard backup procedure](https://developer.hashicorp.com/vault/tutorials/standard-procedures/sop-backup#manual-backup-procedures) for a single vault cluster or clusters with disaster recovery.
+
+## Restoring a Snapshot
+In case of failure just follow the [standard restore procedure](https://developer.hashicorp.com/vault/tutorials/standard-procedures/sop-restore#procedures) for your cluster type using the last snapshot created by the agent from your backup storage.
 
 ## Running
+
+### Helm-Chart
+
+If you're running on kubernetes, you can use the
+provided [Helm-Charts](https://argelbargel.github.io/vault-raft-snapshot-agent-helm/) to install Vault Raft Snapshot
+Agent into your cluster.
 
 ### Container-Image
 
@@ -19,15 +28,9 @@ You can run the agent with the supplied container-image, e.g. via docker:
 docker run -v <path to snapshot.json>:/etc/vault.d/snapshot.json" ghcr.io/argelbargel/vault-raft-snapshot-agent:latest
 ```
 
-### Helm-Chart
-
-If you're running on kubernetes, you can use the
-provided [Helm-Charts](https://argelbargel.github.io/vault-raft-snapshot-agent-helm/) to install Vault Raft Snapshot
-Agent into your cluster.
-
 ### systemd-service
 
-The recommended way of running this daemon is using systemctl, since it handles restarts and failure scenarios quite
+If you want to use the plain binary, the recommended way of running this daemon is using systemctl, since it handles restarts and failure scenarios quite
 well. To learn more about systemctl,
 checkout [this article](https://www.digitalocean.com/community/tutorials/how-to-use-systemctl-to-manage-systemd-services-and-units).
 begin, create the following file at `/etc/systemd/system/snapshot.service`:
@@ -103,7 +106,7 @@ You can specify most [command-line options](#command-line-options-and-logging) v
 | `VRSA_LOG_LEVEL=<level>`   | [--log-level](#cli-log-level)     |
 | `VRSA_LOG_OUTPUT=<output>` | [--log-output](#cli-log-output)   |
 
-Vault Raft Snapshot Agent supports static configuration via environment variables:
+Additionally Vault Raft Snapshot Agent supports static configuration via environment variables alongside its configuration file:
 
 - for setting the [address of the vault-server](#cnf-vault-url) you can use `VAULT_ADDR`.
 - any other [configuration option](#configuration) can be set by prefixing `VRSA_` to the upper-cased path to the key  
@@ -111,12 +114,12 @@ Vault Raft Snapshot Agent supports static configuration via environment variable
   For example `VRSA_SNAPSHOTS_FREQUENCY=<value>` configures the [snapshot-frequency](#cnf-snapshots-frequency) and
   `VRSA_VAULT_AUTH_TOKEN=<value>` configures the [token authentication](#cnf-vault-auth-token) for vault.
 
-Other than the [external property sources](#secrets-and-external-property-sources), these environment variables are read
-once at startup only and the
-configuration will not be reloaded when their values change.
+In contrast to values specified via the configuration file, these environment variables are read
+once at startup only and the configuration will not be reloaded when their values change, 
+except those specified as [external property sources/Secret](#secrets-and-external-property-sources) below which always reflect the currently configured value.
 
 **Options specified via environment-variables take precedence before the values specified in the configuration file -
-even those specified as [external property sources](#secrets-and-external-property-sources)!**
+even those specified as [external property sources/Secret](#secrets-and-external-property-sources)!**
 
 ## Configuration
 
