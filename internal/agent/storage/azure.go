@@ -47,7 +47,7 @@ func createAzBlobClient(config AzureStorageConfig) (*azblob.Client, error) {
 		return nil, err
 	}
 
-	accountKey, err := config.AccountName.Resolve(true)
+	accountKey, err := config.AccountKey.Resolve(true)
 	if err != nil {
 		return nil, err
 	}
