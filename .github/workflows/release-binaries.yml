@@ -21,7 +21,7 @@ jobs:
 
     steps:
     - name: Download binaries from earlier jobs
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: binaries
         path: dist/

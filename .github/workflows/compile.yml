@@ -39,10 +39,10 @@ jobs:
 
     steps:
     - name: "Checkout repository"
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version-file: 'go.mod'
         check-latest: true
@@ -58,7 +58,7 @@ jobs:
 
     - name: Upload binary
       if: inputs.upload-artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: binaries
         path: ./dist/*
