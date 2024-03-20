@@ -25,7 +25,7 @@ Agent into your cluster.
 You can run the agent with the supplied container-image, e.g. via docker:
 
 ```
-docker run -v <path to snapshot.json>:/etc/vault.d/snapshot.json" ghcr.io/argelbargel/vault-raft-snapshot-agent:latest
+docker run -v <path to snapshots.json>:/etc/vault.d/snapshots.json" ghcr.io/argelbargel/vault-raft-snapshot-agent:latest
 ```
 
 ### systemd-service
@@ -41,7 +41,7 @@ Description="An Open Source Snapshot Service for Raft"
 Documentation=https://github.com/Argelbargel/vault-raft-snapshot-agent/
 Requires=network-online.target
 After=network-online.target
-ConditionFileNotEmpty=/etc/vault.d/snapshot.json
+ConditionFileNotEmpty=/etc/vault.d/snapshots.json
 
 [Service]
 Type=simple
@@ -57,7 +57,7 @@ LimitNOFILE=65536
 WantedBy=multi-user.target
 ```
 
-Your configuration is assumed to exist at `/etc/vault.d/snapshot.json` and the actual daemon binary
+Your configuration is assumed to exist at `/etc/vault.d/snapshots.json` and the actual daemon binary
 at `/usr/local/bin/vault-raft-snapshot-agent`.
 
 Then just run:

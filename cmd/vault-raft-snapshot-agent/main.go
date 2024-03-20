@@ -27,8 +27,8 @@ The options are:
 		Specifies the output to log to (default: stderr)
 
 If no config file is explicitly specified, the program looks for configuration-files
-with the name `snapshot` and the extensions supported by [viper]
-in the current working directory or in /etc/vault.d/snapshots.
+with the name `snapshots` and the extensions supported by [viper]
+in the current working directory or in /etc/vault.d/.
 
 For details on how to configure the program see the [README]
 
