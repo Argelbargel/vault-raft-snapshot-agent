@@ -28,6 +28,16 @@ You can run the agent with the supplied container-image, e.g. via docker:
 docker run -v <path to snapshots.json>:/etc/vault.d/snapshots.json" ghcr.io/argelbargel/vault-raft-snapshot-agent:latest
 ```
 
+#### Add self-signed-certificates
+If your storage uses self-signed-certificates (e.g. self-hosted s3), you can add your certficates by mounting them at `/tmp/certs` and run the container:
+
+```
+docker run -v <path to snapshots.json>:/etc/vault.d/snapshots.json" -v "<path to your certificates>:/tmp/certs" ghcr.io/argelbargel/vault-raft-snapshot-agent:latest
+```
+
+Upon startup the container will add these certficates to it certificate-store automatically.
+
+
 ### systemd-service
 
 If you want to use the plain binary, the recommended way of running this daemon is using systemctl, since it handles restarts and failure scenarios quite
@@ -669,6 +679,7 @@ snapshots:
 | `insecure`     | Boolean                                          | *false*                      | whether to connect using https (false) or not                                                                     |
 
 Any common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
+
 
 ## License
 
