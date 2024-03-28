@@ -60,6 +60,6 @@ jobs:
       if: inputs.upload-artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: binaries
+        name: binary-${{ matrix.platform }}
         path: ./dist/*
         retention-days: ${{ inputs.artifact-retention-days }}

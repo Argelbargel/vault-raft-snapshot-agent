@@ -23,10 +23,12 @@ jobs:
     - name: Download binaries from earlier jobs
       uses: actions/download-artifact@v4
       with:
-        name: binaries
+        pattern: binary-*
         path: dist/
+        merge-multiple: true
 
     - name: Upload binaries to release
+
       uses: "ncipollo/release-action@v1"
       with:
         token: "${{ secrets.GITHUB_TOKEN }}"
