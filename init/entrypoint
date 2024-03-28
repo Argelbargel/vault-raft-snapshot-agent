@@ -1,0 +1,11 @@
+#! /bin/bash
+set -eu
+
+if [ -d /etc/vault.d/certs ]; then
+    echo "Updating certificates"
+    cp /etc/vault.d/certs /usr/local/share/ca-certificates
+    update-ca-certificates
+fi
+
+echo "Starting agent..."
+exec /bin/vault-raft-snapshot-agent

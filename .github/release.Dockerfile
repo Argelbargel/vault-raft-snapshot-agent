@@ -4,12 +4,17 @@ LABEL org.opencontainers.image.source=https://github.com/Argelbargel/vault-raft-
 LABEL org.opencontainers.image.description="vault-raft-snapshot-agent ($TARGETPLATFORM)"
 LABEL org.opencontainers.image.licenses=MIT
 
-ENTRYPOINT ["/bin/vault-raft-snapshot-agent"]
+RUN apk --no-cache add ca-certificates \
+    && rm -rf /var/cache/apk/*
+
 VOLUME /etc/vault.d/
-WORKDIR /
 
 ARG DIST_DIR
 ARG TARGETOS
 ARG TARGETARCH
+COPY ${DIST_DIR}/entrypoint /sbin/entrypoint
 COPY ${DIST_DIR}/vault-raft-snapshot-agent_${TARGETOS}_${TARGETARCH} /bin/vault-raft-snapshot-agent
-RUN chmod +x /bin/vault-raft-snapshot-agent
+RUN chmod +x /sbin/entrypoint /bin/vault-raft-snapshot-agent
+
+WORKDIR /
+ENTRYPOINT ["/sbin/entrypoint"]
