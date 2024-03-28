@@ -88,6 +88,12 @@ jobs:
         name: binary-${{ matrix.platform }}
         path: dist/
 
+    - name: Move binary
+      id: move_binary
+      run: |
+        mv -f dist/binary-${{ matrix.platform }}/* dist/
+        rm -f dist/binary-${{ matrix.platform }}/
+
     - name: Copy entrypoint
       id: copy_entrypoint
       run: |
