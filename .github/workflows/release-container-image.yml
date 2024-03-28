@@ -88,6 +88,11 @@ jobs:
         pattern: binary-${{ matrix.platform }}
         path: dist/
 
+    - name: Copy entrypoint
+      id: copy_entrypoint
+      run: |
+        cp -f init/entrypoint dist/entrypoint
+
     - name: Login to Github Packages
       uses: docker/login-action@v3
       with:
