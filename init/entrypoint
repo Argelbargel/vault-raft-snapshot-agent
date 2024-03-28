@@ -1,9 +1,9 @@
 #! /bin/sh
 set -eu
 
-if [ -d /etc/vault.d/certs ]; then
+if [ -d /tmp/certs ]; then
     echo "Updating certificates"
-    cp /etc/vault.d/certs/* /usr/local/share/ca-certificates
+    cp /tmp/certs/* /usr/local/share/ca-certificates
     update-ca-certificates
 fi
 

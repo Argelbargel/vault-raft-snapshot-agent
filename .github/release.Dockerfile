@@ -7,7 +7,7 @@ LABEL org.opencontainers.image.licenses=MIT
 RUN apk --no-cache add ca-certificates \
     && rm -rf /var/cache/apk/*
 
-VOLUME /etc/vault.d/
+VOLUME /etc/vault.d/ /tmp/certs
 
 ARG DIST_DIR
 ARG TARGETOS
