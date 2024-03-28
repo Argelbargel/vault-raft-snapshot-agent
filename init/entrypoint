@@ -3,7 +3,7 @@ set -eu
 
 if [ -d /etc/vault.d/certs ]; then
     echo "Updating certificates"
-    cp /etc/vault.d/certs /usr/local/share/ca-certificates
+    cp /etc/vault.d/certs/* /usr/local/share/ca-certificates
     update-ca-certificates
 fi
 
