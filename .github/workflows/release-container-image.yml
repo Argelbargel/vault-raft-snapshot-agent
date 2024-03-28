@@ -66,9 +66,9 @@ jobs:
       fail-fast: true
       matrix:
         platform:
-        - linux/amd64
-        - linux/arm64
-        - linux/arm
+        - amd64
+        - arm64
+        - arm
 
     steps:
     - name: "Checkout repository"
@@ -77,7 +77,7 @@ jobs:
     - name: Extract metadata of Platform
       id: platform_meta
       env:
-        PLATFORM: ${{ matrix.platform }}
+        PLATFORM: linux/${{ matrix.platform }}
       run: |
         echo "os=$(dirname $PLATFORM)" >> $GITHUB_OUTPUT
         echo "arch=$(basename $PLATFORM)" >> $GITHUB_OUTPUT
@@ -112,7 +112,7 @@ jobs:
         push: true
         context: .
         file: .github/release.Dockerfile
-        platforms: ${{ matrix.platform }}
+        platforms: linux/${{ matrix.platform }}
         build-args: |
           DIST_DIR=./dist
           TARGETOS=${{ steps.platform_meta.outputs.os }}
