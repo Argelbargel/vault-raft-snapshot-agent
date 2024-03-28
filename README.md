@@ -35,7 +35,7 @@ If your storage uses self-signed-certificates (e.g. self-hosted s3), you can add
 docker run -v <path to snapshots.json>:/etc/vault.d/snapshots.json" -v "<path to your certificates>:/tmp/certs" ghcr.io/argelbargel/vault-raft-snapshot-agent:latest
 ```
 
-Upon startup the container will add these certficates to it certificate-store automatically.
+Upon startup the container will add these certficates to its certificate-store automatically.
 
 
 ### systemd-service
