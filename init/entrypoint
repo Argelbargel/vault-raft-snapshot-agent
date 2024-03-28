@@ -1,7 +1,7 @@
 #! /bin/sh
 set -eu
 
-if [ -d /tmp/certs ] && [ "$(ls -A /tmp/certs/*)" ]; then
+if [ -d /tmp/certs ] && [ "$(ls -A /tmp/certs/* 2> /dev/null)" ]; then
     echo "Updating certificates"
     cp /tmp/certs/* /usr/local/share/ca-certificates
     update-ca-certificates
