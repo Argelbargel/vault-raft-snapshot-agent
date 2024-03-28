@@ -85,7 +85,7 @@ jobs:
     - name: Download binaries from earlier jobs
       uses: actions/download-artifact@v4
       with:
-        pattern: binary-${{ matrix.platform }}
+        name: binary-${{ matrix.platform }}
         path: dist/
 
     - name: Copy entrypoint
