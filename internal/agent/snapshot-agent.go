@@ -163,7 +163,7 @@ func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Ticker {
 		return a.snapshotTicker
 	}
 
-	nextSnapshot = a.manager.UploadSnapshot(ctx, snapshot, 0, a.lastSnapshotTime, a.storageConfigDefaults)
+	nextSnapshot = a.manager.UploadSnapshot(ctx, snapshot, info.Size(), a.lastSnapshotTime, a.storageConfigDefaults)
 	return a.updateTicker(nextSnapshot)
 }
 
