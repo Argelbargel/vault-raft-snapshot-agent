@@ -4,8 +4,9 @@ LABEL org.opencontainers.image.source=https://github.com/Argelbargel/vault-raft-
 LABEL org.opencontainers.image.description="vault-raft-snapshot-agent ($TARGETPLATFORM)"
 LABEL org.opencontainers.image.licenses=MIT
 
-RUN apk --no-cache add ca-certificates \
-    && rm -rf /var/cache/apk/*
+RUN apk --no-cache upgrade && \
+    apk --no-cache add ca-certificates && \
+    rm -rf /var/cache/apk/*
 
 VOLUME /etc/vault.d/ /tmp/certs
 
