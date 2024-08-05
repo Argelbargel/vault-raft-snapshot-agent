@@ -115,7 +115,7 @@ func (s awsStorageImpl) uploadSnapshot(ctx context.Context, name string, data io
 		Bucket:        &s.bucket,
 		Key:           aws.String(s.keyPrefix + name),
 		Body:          data,
-		ContentLength: size,
+		ContentLength: &size,
 	}
 
 	if s.sse {
