@@ -1,6 +1,6 @@
 module github.com/Argelbargel/vault-raft-snapshot-agent
 
-go 1.21.0
+go 1.22.5
 
 // cli & configuration
 require (
@@ -39,14 +39,14 @@ require github.com/minio/minio-go/v7 v7.0.63
 
 // Vault
 require (
-	github.com/hashicorp/vault/api v1.10.0
-	github.com/hashicorp/vault/api/auth/approle v0.5.0
-	github.com/hashicorp/vault/api/auth/aws v0.5.0
-	github.com/hashicorp/vault/api/auth/azure v0.5.0
-	github.com/hashicorp/vault/api/auth/gcp v0.5.0
-	github.com/hashicorp/vault/api/auth/kubernetes v0.5.0
-	github.com/hashicorp/vault/api/auth/ldap v0.5.0
-	github.com/hashicorp/vault/api/auth/userpass v0.5.0
+	github.com/hashicorp/vault/api v1.14.0
+	github.com/hashicorp/vault/api/auth/approle v0.7.0
+	github.com/hashicorp/vault/api/auth/aws v0.7.0
+	github.com/hashicorp/vault/api/auth/azure v0.6.0
+	github.com/hashicorp/vault/api/auth/gcp v0.7.0
+	github.com/hashicorp/vault/api/auth/kubernetes v0.7.0
+	github.com/hashicorp/vault/api/auth/ldap v0.7.0
+	github.com/hashicorp/vault/api/auth/userpass v0.7.0
 )
 
 // helpers
@@ -56,7 +56,7 @@ require (
 )
 
 // ensure up-to-date versions (because of known vulnerabilities etc.)
-require golang.org/x/crypto v0.21.0 // indirect
+require golang.org/x/crypto v0.23.0 // indirect
 
 // testing
 require github.com/stretchr/testify v1.8.4
@@ -68,7 +68,7 @@ require (
 	cloud.google.com/go/iam v1.1.2 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.7.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0 // indirect
-	github.com/aws/aws-sdk-go v1.45.8 // indirect
+	github.com/aws/aws-sdk-go v1.49.22 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.13 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.11 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.41 // indirect
@@ -89,7 +89,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.1 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -137,11 +137,11 @@ require (
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/net v0.23.0 // indirect
+	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/oauth2 v0.12.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/text v0.15.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
