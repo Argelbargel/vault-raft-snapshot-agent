@@ -8,12 +8,12 @@ concurrency:
   group: trivy-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: write
-
 jobs:
   trivy:
     runs-on: ubuntu-20.04
+    permissions:
+      contents: write
+      security-events: write
 
     steps:
     - name: "Checkout repository"
