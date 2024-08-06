@@ -31,3 +31,5 @@ jobs:
   test:
     uses: ./.github/workflows/test.yml
 
+  trivy:
+    uses: ./.github/workflows/trivy-code.yml

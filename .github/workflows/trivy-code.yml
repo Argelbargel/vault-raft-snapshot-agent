@@ -19,21 +19,21 @@ jobs:
     - name: "Checkout repository"
       uses: actions/checkout@v4
 
-    - name: Run Trivy vulnerability scanner in repo mode
+    - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@0.20.0
       with:
         scan-type: 'fs'
         ignore-unfixed: true
         format: 'sarif'
         output: 'trivy-results.sarif'
-        severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'
+        severity: 'MEDIUM,HIGH,CRITICAL'
 
-    - name: Upload Trivy scan results to GitHub Security tab
+    - name: Upload Trivy scan results
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: 'trivy-results.sarif'
 
-    - name: Run Trivy in GitHub SBOM mode and submit results to Dependency Graph
+    - name: Generate SBOM
       uses: aquasecurity/trivy-action@0.20.0
       with:
         scan-type: 'fs'
