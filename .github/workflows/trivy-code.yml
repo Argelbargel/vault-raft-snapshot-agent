@@ -3,6 +3,8 @@ name: Trivy Checks
 on:
   workflow_dispatch:
   workflow_call:
+  schedule:
+    - cron:  '30 22 * * *'
 
 concurrency:
   group: trivy-${{ github.ref }}
