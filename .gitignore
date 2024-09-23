@@ -18,4 +18,5 @@ main
 out/
 .build/
 .idea/
+.vscode/
 *.iml

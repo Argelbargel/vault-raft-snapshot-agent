@@ -668,15 +668,16 @@ snapshots:
 
 ##### Configuration Options
 
-| Key            | Type                                             | Required/*Default*           | Description                                                                                                       |
-| -------------- | ------------------------------------------------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `endpoint`     | String                                           | **required**                 | S3 compatible storage endpoint (ex: my-storage.example.com)                                                       |
-| `bucket`       | String                                           | **required**                 | bucket to store snapshots in                                                                                      |
-| `accessKeyId`  | [Secret](#secrets-and-external-property-sources) | *env://S3_ACCESS_KEY_ID*     | specifies the access key                                                                                          |
-| `accessKey`    | [Secret](#secrets-and-external-property-sources) | *env://S3_SECRET_ACCESS_KEY* | specifies the secret access key; **must resolve to non-empty value if accessKeyId resolves to a non-empty value** |
-| `sessionToken` | [Secret](#secrets-and-external-property-sources) | *env://S3_SESSION_TOKEN*     | specifies the session token                                                                                       |
-| `region`       | [Secret](#secrets-and-external-property-sources) |                              | S3 region if it is required                                                                                       |
-| `insecure`     | Boolean                                          | *false*                      | whether to connect using https (false) or not                                                                     |
+| Key             | Type                                             | Required/*Default*           | Description                                                                                                       |
+| --------------- | ------------------------------------------------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `endpoint`      | String                                           | **required**                 | S3 compatible storage endpoint (ex: my-storage.example.com)                                                       |
+| `bucket`        | String                                           | **required**                 | bucket to store snapshots in                                                                                      |
+| `accessKeyId`   | [Secret](#secrets-and-external-property-sources) | *env://S3_ACCESS_KEY_ID*     | specifies the access key                                                                                          |
+| `accessKey`     | [Secret](#secrets-and-external-property-sources) | *env://S3_SECRET_ACCESS_KEY* | specifies the secret access key; **must resolve to non-empty value if accessKeyId resolves to a non-empty value** |
+| `sessionToken`  | [Secret](#secrets-and-external-property-sources) | *env://S3_SESSION_TOKEN*     | specifies the session token                                                                                       |
+| `region`        | [Secret](#secrets-and-external-property-sources) |                              | S3 region if it is required                                                                                       |
+| `insecure`      | Boolean                                          | *false*                      | whether to connect using https (false) or not                                                                     |
+| `skipSSLVerify` | Boolean                                          | *false*                      | disable SSL certificate validation (true) or not                                                                    
 
 Any common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
 

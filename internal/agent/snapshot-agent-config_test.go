@@ -143,6 +143,7 @@ func TestReadCompleteConfig(t *testing.T) {
 					SessionToken: "test-s3-token",
 					Region:       "test-s3-region",
 					Insecure:     true,
+					SkipSSLVerify: true,
 				},
 			},
 		},

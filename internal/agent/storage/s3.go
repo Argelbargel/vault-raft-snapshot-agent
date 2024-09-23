@@ -2,14 +2,17 @@ package storage
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/logging"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	"io"
-	"strings"
-	"time"
 )
 
 type S3StorageConfig struct {
@@ -21,6 +24,7 @@ type S3StorageConfig struct {
 	SessionToken            secret.Secret `default:"env://S3_SESSION_TOKEN"`
 	Region                  secret.Secret
 	Insecure                bool
+	SkipSSLVerify           bool
 	Empty                   bool
 }
 
@@ -71,9 +75,10 @@ func (conf S3StorageConfig) createClient(ctx context.Context) (*minio.Client, er
 	}
 
 	client, err := minio.New(conf.Endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKeyId, accessKey, sessionToken),
-		Secure: !conf.Insecure,
-		Region: region,
+		Creds:     credentials.NewStaticV4(accessKeyId, accessKey, sessionToken),
+		Secure:    !conf.Insecure,
+		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: conf.SkipSSLVerify}},
+		Region:    region,
 	})
 	if err != nil {
 		return nil, err

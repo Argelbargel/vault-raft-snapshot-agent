@@ -82,5 +82,6 @@ snapshots:
       sessionToken: test-s3-token
       region: test-s3-region
       insecure: true
+      skipSSLVerify: true
 
 
