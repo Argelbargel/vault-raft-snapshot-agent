@@ -142,8 +142,10 @@ The Agent monitors the configuration-file for changes and reloads the configurat
 
 ```
 vault:
-  # Url of the (leading) vault-server
-  url: https://vault-server:8200
+  nodes:
+    urls:
+      # Url of the (leading) vault-server
+      - https://vault-server:8200
   auth:
     # configures kubernetes auth
     kubernetes:
@@ -177,14 +179,14 @@ to that storage will fail (gracefully)!**
 
 ```
 vault:
-  url: <http(s)-url to vault-server>
+  url: <http(s)-url to vault-cluster leader>
   insecure: <true|false>
   timeout: <duration>
 ```
 
 | Key                             | Type                                                   | Required/*Default*       | Description                                                                                                          |
 | ------------------------------- | ------------------------------------------------------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| <a id="cnf-vault-url"></a>`url` | URL                                                    | *https://127.0.0.1:8200* | specifies the url of the vault-server                                                                                |
+| <a id="cnf-vault-url"></a>`url` | URL                                                    | *https://127.0.0.1:8200* | specifies the url of the vault-server (*DEPRECATED, use nodes instead*)                                                                               |
 | `insecure`                      | Boolean                                                | *false*                  | specifies whether insecure https connections are allowed or not. Set to `true` when you use self-signed certificates |
 | `timeout`                       | [Duration](https://golang.org/pkg/time/#ParseDuration) | *60s*                    | timeout for the vault-http-client; increase for large raft databases (and increase `snapshots.timeout` accordingly!) |
 
@@ -192,6 +194,24 @@ vault:
 elected leader!** When running Vault on Kubernetes installed by
 the [default helm-chart](https://developer.hashicorp.com/vault/docs/platform/k8s/helm), this should be
 `http(s)://vault-active.<vault-namespace>.svc.cluster.local:<vault-server service-port>`.|
+
+### Vault Nodes configuration
+While it is still recommended to have a single url which always points to the cluster leader, you may provide a list of urls to all known nodes that are reachable from the agent and let it figure out, which one is the leader. 
+
+```
+vault:
+  nodes:
+    urls:
+      -  <http(s)-urls to vault-cluster nodes>
+      - ...
+    autoDetectLeader: true
+```
+
+| Key                             | Type                                                   | Required/*Default*       | Description                                                                                                          |
+| ------------------------------- | ------------------------------------------------------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| <a id="cnf-vault-url"></a>`nodes.urls` | List of URL                                                    | **required** | specifies at least one url to a vault-server                                                                                |
+| `nodes.autoDetectLeader`               | Boolean                                          | *false*                  | if true the agent will ask the nodes for the url to the leader. Otherwise it will try the given urls until it finds the leader node |
+
 
 ### Vault authentication
 

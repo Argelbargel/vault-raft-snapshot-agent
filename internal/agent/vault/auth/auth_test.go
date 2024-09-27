@@ -3,50 +3,100 @@ package auth
 import (
 	"context"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
-func TestVaultAuthMethod_Login_FailsIfMethodFactoryFails(t *testing.T) {
+func TestVaultAuth_Refresh_FailsIfMethodFactoryFails(t *testing.T) {
 	expectedErr := errors.New("create failed")
-	auth := vaultAuthMethodImpl{
-		authMethodFactoryStub{createErr: expectedErr},
+	auth := vaultAuthImpl{
+		factory: authMethodFactoryStub{createErr: expectedErr},
 	}
 
-	_, err := auth.Login(context.Background(), nil)
+	err := auth.Refresh(context.Background(), nil, true)
 	assert.ErrorIs(t, err, expectedErr)
+	assert.Equal(t, time.Time{}, auth.expires)
 }
 
-func TestVaultAuthMethod_Login_FailsIfAuthMethodLoginFails(t *testing.T) {
+func TestVaultAuth_Refresh_FailsIfAuthMethodRefreshFails(t *testing.T) {
 	expectedErr := errors.New("login failed")
-	auth := vaultAuthMethodImpl{
-		authMethodFactoryStub{
+	auth := vaultAuthImpl{
+		factory: authMethodFactoryStub{
 			method: authMethodStub{loginError: expectedErr},
 		},
 	}
 
-	_, err := auth.Login(context.Background(), nil)
+	err := auth.Refresh(context.Background(), nil, true)
+	assert.ErrorIs(t, err, expectedErr)
+	assert.Equal(t, time.Time{}, auth.expires)
+}
+
+func TestVaultAuth_Refresh_SkipsLoginUntilExpired(t *testing.T) {
+	expires := time.Now().Add(time.Duration(1) * time.Second)
+	expectedErr := errors.New("login failed")
+	auth := vaultAuthImpl{
+		factory: authMethodFactoryStub{
+			method: authMethodStub{loginError: expectedErr},
+		},
+		expires: expires,
+	}
+
+	err := auth.Refresh(context.Background(), nil, false)
+	assert.NoError(t, err, "Refresh failed unexpectedly")
+	assert.Equal(t, expires, auth.expires)
+
+	time.Sleep(time.Second * 2)
+
+	err = auth.Refresh(context.Background(), nil, false)
 	assert.ErrorIs(t, err, expectedErr)
 }
 
-func TestVaultAuthMethod_Login_ReturnsLeaseDuration(t *testing.T) {
+func TestVaultAuth_Expires_AfterTokenTTL(t *testing.T) {
+	expectedTTL := 60
+	expectedExpires := time.Now().Add((time.Duration(expectedTTL) * time.Second) / 2)
 	expectedSecret := &api.Secret{
 		Auth: &api.SecretAuth{
-			ClientToken: "test",
+			ClientToken:   "test",
+			LeaseDuration: expectedTTL,
 		},
 	}
 
-	auth := vaultAuthMethodImpl{
-		authMethodFactoryStub{
+	auth := vaultAuthImpl{
+		factory: authMethodFactoryStub{
 			method: authMethodStub{secret: expectedSecret},
 		},
 	}
 
-	authSecret, err := auth.Login(context.Background(), &api.Client{})
+	err := auth.Refresh(context.Background(), &api.Client{}, false)
 
-	assert.NoError(t, err, "Login failed unexpectedly")
-	assert.Equal(t, expectedSecret, authSecret)
+	assert.NoError(t, err, "Refresh failed unexpectedly")
+	assert.Equal(t, expectedExpires, auth.expires)
+}
+
+func TestVaultAuth_Refresh_IgnoresExpiresIfForced(t *testing.T) {
+	expires := time.Now().Add(time.Duration(60) * time.Second)
+	expectedTTL := 30
+	expectedExpires := time.Now().Add((time.Duration(expectedTTL) * time.Second) / 2)
+	expectedSecret := &api.Secret{
+		Auth: &api.SecretAuth{
+			ClientToken:   "test",
+			LeaseDuration: expectedTTL,
+		},
+	}
+
+	auth := vaultAuthImpl{
+		factory: authMethodFactoryStub{
+			method: authMethodStub{secret: expectedSecret},
+		},
+		expires: expires,
+	}
+
+	err := auth.Refresh(context.Background(), &api.Client{}, true)
+	assert.NoError(t, err, "Refresh failed unexpectedly")
+	assert.Equal(t, expectedExpires, auth.expires)
 }
 
 type authMethodFactoryStub struct {

@@ -3,12 +3,13 @@ package agent
 import (
 	"context"
 	"errors"
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/storage"
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/vault"
-	"github.com/hashicorp/vault/api"
 	"io"
 	"testing"
 	"time"
+
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/storage"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/vault"
+	"github.com/hashicorp/vault/api"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -23,7 +24,8 @@ func TestTakeSnapshotUploadsSnapshot(t *testing.T) {
 		Frequency: time.Millisecond,
 	}
 
-	factory := &storageControllerFactoryStub{nextSnapshot: time.Now().Add(time.Millisecond * 250)}
+	expectedNextSnapshot := time.Now().Add(time.Millisecond * 250)
+	factory := &storageControllerFactoryStub{nextSnapshot: expectedNextSnapshot}
 
 	manager := &storage.Manager{}
 	manager.AddStorageFactory(factory)
@@ -41,7 +43,7 @@ func TestTakeSnapshotUploadsSnapshot(t *testing.T) {
 	assert.Equal(t, clientVaultAPI.snapshotData, factory.uploadData)
 	assert.Equal(t, defaults, factory.defaults)
 	assert.WithinRange(t, factory.snapshotTimestamp, start, start.Add(50*time.Millisecond))
-	assert.GreaterOrEqual(t, time.Now(), factory.nextSnapshot)
+	assert.Equal(t, expectedNextSnapshot, factory.nextSnapshot)
 }
 
 func TestTakeSnapshotLocksTakeSnapshot(t *testing.T) {
@@ -259,7 +261,7 @@ func TestUpdateReschedulesSnapshots(t *testing.T) {
 }
 
 func newClient(api *clientVaultAPIStub) *vault.VaultClient {
-	return vault.NewClient(api, clientVaultAPIAuthStub{}, time.Time{})
+	return vault.NewClient(api, []string{"http://node"}, false, clientVaultAPIAuthStub{})
 }
 
 type clientVaultAPIStub struct {
@@ -270,11 +272,14 @@ type clientVaultAPIStub struct {
 	snapshotData    string
 }
 
-func (stub *clientVaultAPIStub) Address() string {
-	return "test"
+func (stub *clientVaultAPIStub) Connect(node string) (*api.Client, error) {
+	config := api.DefaultConfig()
+	config.Address = node
+
+	return api.NewClient(config)
 }
 
-func (stub *clientVaultAPIStub) TakeSnapshot(ctx context.Context, writer io.Writer) error {
+func (stub *clientVaultAPIStub) TakeSnapshot(ctx context.Context, _ *api.Client, writer io.Writer) error {
 	stub.tookSnapshot = true
 	if stub.snapshotFails {
 		return errors.New("TakeSnapshot failed")
@@ -294,19 +299,14 @@ func (stub *clientVaultAPIStub) TakeSnapshot(ctx context.Context, writer io.Writ
 	return nil
 }
 
-func (stub *clientVaultAPIStub) IsLeader() (bool, error) {
-	return stub.leader, nil
-}
-
-func (stub *clientVaultAPIStub) RefreshAuth(ctx context.Context, auth api.AuthMethod) (time.Duration, error) {
-	_, err := auth.Login(ctx, nil)
-	return 0, err
+func (stub *clientVaultAPIStub) GetLeader(context.Context, *api.Client) (bool, string) {
+	return stub.leader, ""
 }
 
 type clientVaultAPIAuthStub struct{}
 
-func (stub clientVaultAPIAuthStub) Login(_ context.Context, _ *api.Client) (*api.Secret, error) {
-	return nil, nil
+func (stub clientVaultAPIAuthStub) Refresh(context.Context, *api.Client, bool) error {
+	return nil
 }
 
 type storageControllerFactoryStub struct {
