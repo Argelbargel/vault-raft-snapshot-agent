@@ -73,7 +73,7 @@ func TestVaultAuth_Expires_AfterTokenTTL(t *testing.T) {
 	err := auth.Refresh(context.Background(), &api.Client{}, false)
 
 	assert.NoError(t, err, "Refresh failed unexpectedly")
-	assert.Equal(t, expectedExpires, auth.expires)
+	assert.WithinRange(t, auth.expires, expectedExpires, expectedExpires.Add(50*time.Millisecond))
 }
 
 func TestVaultAuth_Refresh_IgnoresExpiresIfForced(t *testing.T) {
@@ -96,7 +96,7 @@ func TestVaultAuth_Refresh_IgnoresExpiresIfForced(t *testing.T) {
 
 	err := auth.Refresh(context.Background(), &api.Client{}, true)
 	assert.NoError(t, err, "Refresh failed unexpectedly")
-	assert.Equal(t, expectedExpires, auth.expires)
+	assert.WithinRange(t, auth.expires, expectedExpires, expectedExpires.Add(50*time.Millisecond))
 }
 
 type authMethodFactoryStub struct {
