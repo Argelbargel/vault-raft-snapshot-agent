@@ -2,149 +2,190 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"slices"
+	"time"
+
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/logging"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/vault/auth"
-	"io"
-	"time"
 
 	"github.com/hashicorp/vault/api"
 )
 
-type VaultClientConfig struct {
-	Url      string        `default:"http://127.0.0.1:8200" validate:"required,http_url"`
-	Timeout  time.Duration `default:"60s"`
-	Insecure bool
-	Auth     auth.VaultAuthConfig
-}
-
 // VaultClient is the public implementation of the client communicating with vault to authenticate and take snapshots
 type VaultClient struct {
-	api            vaultAPI
-	auth           api.AuthMethod
-	authExpiration time.Time
+	api              vaultAPI
+	nodes            []string
+	autoDetectLeader bool
+	auth             auth.VaultAuth
+	connection       *api.Client
 }
 
 // internal definition of vault-api used by VaultClient
 type vaultAPI interface {
-	Address() string
-	IsLeader() (bool, error)
-	TakeSnapshot(context.Context, io.Writer) error
-	RefreshAuth(context.Context, api.AuthMethod) (time.Duration, error)
+	Connect(string) (*api.Client, error)
+	GetLeader(context.Context, *api.Client) (bool, string)
+	TakeSnapshot(context.Context, *api.Client, io.Writer) error
 }
 
-// internal implementation of the vault-api using a real vault-api-client
+// internal implementation of the vault-api
 type vaultAPIImpl struct {
-	client *api.Client
+	config *api.Config
 }
 
-// CreateClient creates a VaultClient using an api-implementation delegation to a real vault-api-client
+// CreateClient creates a VaultClient using an api-implementation delegating to a real vault-api-client
 func CreateClient(config VaultClientConfig) (*VaultClient, error) {
-	impl, err := newClientVaultAPIImpl(config.Url, config.Insecure, config.Timeout)
+	nodes := []string{}
+
+	if config.Url != "" {
+		nodes = append(nodes, config.Url)
+	}
+
+	for _, node := range config.Nodes.Urls {
+		nodes = append(nodes, node)
+	}
+
+	auth, err := auth.CreateVaultAuth(config.Auth)
 	if err != nil {
 		return nil, err
 	}
 
-	vaultAuth, err := auth.CreateVaultAuth(config.Auth)
+	api, err := newVaultAPIImpl(config.Insecure, config.Timeout)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewClient(impl, vaultAuth, time.Time{}), nil
+	return NewClient(api, nodes, config.Nodes.AutoDetectLeader, auth), nil
 }
 
 // NewClient creates a VaultClient using the given api-implementation and auth
 // this function should only be used in tests!
-func NewClient(api vaultAPI, auth api.AuthMethod, tokenExpiration time.Time) *VaultClient {
-	return &VaultClient{api, auth, tokenExpiration}
+func NewClient(api vaultAPI, nodes []string, autoDetectLeader bool, auth auth.VaultAuth) *VaultClient {
+	return &VaultClient{
+		api:              api,
+		nodes:            nodes,
+		autoDetectLeader: autoDetectLeader,
+		auth:             auth,
+	}
 }
 
 func (c *VaultClient) TakeSnapshot(ctx context.Context, writer io.Writer) error {
-	if err := c.refreshAuth(ctx); err != nil {
+	if err := c.ensureLeader(ctx); err != nil {
+		return fmt.Errorf("could not (re-)connect to leader: %v", err)
+	}
+
+	return c.api.TakeSnapshot(ctx, c.connection, writer)
+}
+
+func (c *VaultClient) ensureLeader(ctx context.Context) error {
+	leader, detectedLeader := c.isConnectedToLeader(ctx, c.connection)
+	if leader {
+		return nil
+	}
+
+	client, err := c.connectToLeader(ctx, c.selectNodesToConnect(slices.Clone(c.nodes), detectedLeader))
+	if err != nil {
 		return err
 	}
 
-	leader, err := c.api.IsLeader()
-	if err != nil {
-		return fmt.Errorf("unable to determine leader status for %s: %v", c.api.Address(), err)
-	}
-
-	if !leader {
-		return fmt.Errorf("%s is not vault-leader-node", c.api.Address())
-	}
-
-	return c.api.TakeSnapshot(ctx, writer)
-}
-
-func (c *VaultClient) refreshAuth(ctx context.Context) error {
-	if c.authExpiration.Before(time.Now()) {
-		leaseDuration, err := c.api.RefreshAuth(ctx, c.auth)
-		if err != nil {
-			return fmt.Errorf("could not refresh auth: %s", err)
-		}
-		c.authExpiration = time.Now().Add(leaseDuration / 2)
-		logging.Debug("Successfully refreshed authentication", "authExpiration", c.authExpiration, "leaseDuration", leaseDuration)
-	}
+	logging.Info("(re-)connected to leader", "node", client.Address())
+	c.connection = client
 	return nil
 }
 
-// creates a api-implementation using a real vault-api-client
-func newClientVaultAPIImpl(address string, insecure bool, timeout time.Duration) (vaultAPIImpl, error) {
-	apiConfig := api.DefaultConfig()
-	apiConfig.Address = address
-	apiConfig.HttpClient.Timeout = timeout
+func (c *VaultClient) isConnectedToLeader(ctx context.Context, conn *api.Client) (bool, string) {
+	if conn == nil {
+		return false, ""
+	}
 
+	if err := c.auth.Refresh(ctx, conn, false); err != nil {
+		logging.Warn("unable to refresh auth", "node", conn.Address())
+		return false, ""
+	}
+
+	leader, detectedLeader := c.api.GetLeader(ctx, conn)
+	if !c.autoDetectLeader {
+		detectedLeader = ""
+	}
+
+	return leader, detectedLeader
+}
+
+func (c *VaultClient) connectToLeader(ctx context.Context, nodes []string) (*api.Client, error) {
+	c.connection = nil
+
+	for i, node := range nodes {
+		conn, err := c.api.Connect(node)
+		if err != nil {
+			logging.Warn("could not connect to node", "node", node)
+			continue
+		}
+
+		leader, detectedLeader := c.isConnectedToLeader(ctx, conn)
+		if leader {
+			return conn, nil
+		}
+
+		if detectedLeader != "" {
+			return c.connectToLeader(ctx, c.selectNodesToConnect(nodes[i:], detectedLeader))
+		}
+	}
+
+	return nil, errors.New("could not connect to leader")
+}
+
+func (c *VaultClient) selectNodesToConnect(nodes []string, detectedLeader string) []string {
+	if detectedLeader != "" {
+		logging.Info("auto-detected leader-node", "node", detectedLeader)
+		nodes = slices.DeleteFunc(nodes, func(node string) bool {
+			return detectedLeader == node
+		})
+		nodes = slices.Insert(nodes, 0, detectedLeader)
+	}
+
+	// when reconnecting, ignore current connected node
+	if c.connection != nil {
+		nodes = slices.DeleteFunc(nodes, func(node string) bool {
+			return c.connection.Address() == node
+		})
+	}
+
+	return nodes
+}
+
+// creates a api-implementation using a real vault-api-client
+func newVaultAPIImpl(insecure bool, timeout time.Duration) (vaultAPIImpl, error) {
 	tlsConfig := &api.TLSConfig{
 		Insecure: insecure,
 	}
+
+	apiConfig := api.DefaultConfig()
+	apiConfig.HttpClient.Timeout = timeout
 
 	if err := apiConfig.ConfigureTLS(tlsConfig); err != nil {
 		return vaultAPIImpl{}, err
 	}
 
-	client, err := api.NewClient(apiConfig)
-	if err != nil {
-		return vaultAPIImpl{}, err
-	}
-
-	return vaultAPIImpl{
-		client,
-	}, nil
+	return vaultAPIImpl{apiConfig}, nil
 }
 
-func (impl vaultAPIImpl) Address() string {
-	return impl.client.Address()
+func (impl vaultAPIImpl) Connect(url string) (*api.Client, error) {
+	impl.config.Address = url
+	return api.NewClient(impl.config)
 }
 
-func (impl vaultAPIImpl) TakeSnapshot(ctx context.Context, writer io.Writer) error {
-	return impl.client.Sys().RaftSnapshotWithContext(ctx, writer)
+func (impl vaultAPIImpl) TakeSnapshot(ctx context.Context, client *api.Client, writer io.Writer) error {
+	return client.Sys().RaftSnapshotWithContext(ctx, writer)
 }
 
-func (impl vaultAPIImpl) IsLeader() (bool, error) {
-	leader, err := impl.client.Sys().Leader()
+func (impl vaultAPIImpl) GetLeader(ctx context.Context, client *api.Client) (bool, string) {
+	leader, err := client.Sys().LeaderWithContext(ctx)
 	if err != nil {
-		return false, err
+		logging.Warn("could not determine leader-state of node", "node", client.Address())
+		return false, ""
 	}
 
-	return leader.IsSelf, nil
-}
-
-func (impl vaultAPIImpl) RefreshAuth(ctx context.Context, auth api.AuthMethod) (time.Duration, error) {
-	authSecret, err := auth.Login(ctx, impl.client)
-	if err != nil {
-		return 0, err
-	}
-
-	tokenTTL, err := authSecret.TokenTTL()
-	if err != nil {
-		return 0, err
-	}
-
-	tokenPolicies, err := authSecret.TokenPolicies()
-	if err != nil {
-		return 0, err
-	}
-
-	logging.Debug("Successfully logged into vault", "ttl", tokenTTL, "policies", tokenPolicies)
-	return tokenTTL, nil
+	return leader.IsSelf, leader.LeaderAddress
 }
