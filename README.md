@@ -198,7 +198,7 @@ vault:
 #### Vault Leader-Detection
 It is recommended to specify only a single url in `vault.nodes.urls` which always points to the current leader (e.g. to 
 `http(s)://vault-active.<vault-namespace>.svc.cluster.local:<vault-server service-port>` when using the vault-helm chart) and to disable the automatic leader detection by not specifying `nodes.autoDetectLeader` or setting it to `false`. 
-If automatic leader detection is enabled the response of (vault's /sys/leader-API-Endpoint)[https://developer.hashicorp.com/vault/api-docs/system/leader] must return a `leaderAddress` reachable by the agent.
+If automatic leader detection is enabled the response of [vault's /sys/leader-api-endpoint](https://developer.hashicorp.com/vault/api-docs/system/leader) must return a `leaderAddress` reachable by the agent.
 If you specify multiple urls in `vault.nodes.urls` without enabling `vault.nodes.autoDetectLeader`, the agent contacts each node and check whether it is the current leader.
 
 
