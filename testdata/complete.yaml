@@ -1,7 +1,9 @@
 vault:
   nodes:
     urls:
-    - "https://example.com:8200"
+    - "https://node1.example.com:8200"
+    - "https://node2.example.com:8200"
+    autoDetectLeader: true
   insecure: true
   timeout: 5m
   auth:

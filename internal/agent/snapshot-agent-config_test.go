@@ -1,12 +1,13 @@
 package agent
 
 import (
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
-	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/test"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/test"
 
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/storage"
@@ -35,7 +36,8 @@ func TestReadCompleteConfig(t *testing.T) {
 	expectedConfig := SnapshotAgentConfig{
 		Vault: vault.VaultClientConfig{
 			Nodes: vault.VaultNodesConfig{
-				Urls: []string{"https://example.com:8200"},
+				Urls:             []string{"https://node1.example.com:8200", "https://node2.example.com:8200"},
+				AutoDetectLeader: true,
 			},
 			Insecure: true,
 			Timeout:  5 * time.Minute,
@@ -138,13 +140,13 @@ func TestReadCompleteConfig(t *testing.T) {
 					StorageControllerConfig: storage.StorageControllerConfig{
 						Retain: test.PtrTo(4),
 					},
-					Endpoint:     "test-s3-endpoint",
-					Bucket:       "test-s3-bucket",
-					AccessKeyId:  "test-s3-key",
-					AccessKey:    "test-s3-secret",
-					SessionToken: "test-s3-token",
-					Region:       "test-s3-region",
-					Insecure:     true,
+					Endpoint:      "test-s3-endpoint",
+					Bucket:        "test-s3-bucket",
+					AccessKeyId:   "test-s3-key",
+					AccessKey:     "test-s3-secret",
+					SessionToken:  "test-s3-token",
+					Region:        "test-s3-region",
+					Insecure:      true,
 					SkipSSLVerify: true,
 				},
 			},
@@ -165,7 +167,7 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 	expectedConfig := SnapshotAgentConfig{
 		Vault: vault.VaultClientConfig{
 			Nodes: vault.VaultNodesConfig{
-				Urls: []string {"http://127.0.0.1:8200"},
+				Urls: []string{"http://127.0.0.1:8200"},
 			},
 			Insecure: false,
 			Timeout:  time.Minute,
