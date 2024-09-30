@@ -1,4 +1,7 @@
 vault:
+  nodes:
+    urls:
+    - "http://127.0.0.1:8200"
   auth:
     kubernetes:
       role: "test-role"

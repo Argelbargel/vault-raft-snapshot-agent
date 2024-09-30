@@ -179,38 +179,27 @@ to that storage will fail (gracefully)!**
 
 ```
 vault:
-  url: <http(s)-url to vault-cluster leader>
+  nodes:
+    urls:
+      -  <http(s)-urls to vault-cluster nodes>
+      - ...
+    autoDetectLeader: true
   insecure: <true|false>
   timeout: <duration>
 ```
 
 | Key                             | Type                                                   | Required/*Default*       | Description                                                                                                          |
 | ------------------------------- | ------------------------------------------------------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| <a id="cnf-vault-url"></a>`url` | URL                                                    | *https://127.0.0.1:8200* | specifies the url of the vault-server (*DEPRECATED, use nodes instead*)                                                                               |
+| <a id="cnf-vault-url"></a>`nodes.urls` | List of URL                                                    | **required** | specifies at least one url to a vault-server                                                                                |
+| `nodes.autoDetectLeader`               | Boolean                                          | *false*                  | if true the agent will ask the nodes for the url to the leader. Otherwise it will try the given urls until it finds the leader node |
 | `insecure`                      | Boolean                                                | *false*                  | specifies whether insecure https connections are allowed or not. Set to `true` when you use self-signed certificates |
 | `timeout`                       | [Duration](https://golang.org/pkg/time/#ParseDuration) | *60s*                    | timeout for the vault-http-client; increase for large raft databases (and increase `snapshots.timeout` accordingly!) |
 
-**`vault.url` should point to the cluster-leader, otherwise no snapshots get taken until the server the url points to is
-elected leader!** When running Vault on Kubernetes installed by
-the [default helm-chart](https://developer.hashicorp.com/vault/docs/platform/k8s/helm), this should be
-`http(s)://vault-active.<vault-namespace>.svc.cluster.local:<vault-server service-port>`.|
-
-### Vault Nodes configuration
-While it is still recommended to have a single url which always points to the cluster leader, you may provide a list of urls to all known nodes that are reachable from the agent and let it figure out, which one is the leader. 
-
-```
-vault:
-  nodes:
-    urls:
-      -  <http(s)-urls to vault-cluster nodes>
-      - ...
-    autoDetectLeader: true
-```
-
-| Key                             | Type                                                   | Required/*Default*       | Description                                                                                                          |
-| ------------------------------- | ------------------------------------------------------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| <a id="cnf-vault-url"></a>`nodes.urls` | List of URL                                                    | **required** | specifies at least one url to a vault-server                                                                                |
-| `nodes.autoDetectLeader`               | Boolean                                          | *false*                  | if true the agent will ask the nodes for the url to the leader. Otherwise it will try the given urls until it finds the leader node |
+#### Vault Leader-Detection
+It is recommended to specify only a single url in `vault.nodes.urls` which always points to the current leader (e.g. to 
+`http(s)://vault-active.<vault-namespace>.svc.cluster.local:<vault-server service-port>` when using the vault-helm chart) and to disable the automatic leader detection by not specifying `nodes.autoDetectLeader` or setting it to `false`. 
+If automatic leader detection is enabled the response of (vault's /sys/leader-API-Endpoint)[https://developer.hashicorp.com/vault/api-docs/system/leader] must return a `leaderAddress` reachable by the agent.
+If you specify multiple urls in `vault.nodes.urls` without enabling `vault.nodes.autoDetectLeader`, the agent contacts each node and check whether it is the current leader.
 
 
 ### Vault authentication

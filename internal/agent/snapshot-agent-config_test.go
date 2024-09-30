@@ -34,7 +34,9 @@ func TestReadCompleteConfig(t *testing.T) {
 
 	expectedConfig := SnapshotAgentConfig{
 		Vault: vault.VaultClientConfig{
-			Url:      "https://example.com:8200",
+			Nodes: vault.VaultNodesConfig{
+				Urls: []string{"https://example.com:8200"},
+			},
 			Insecure: true,
 			Timeout:  5 * time.Minute,
 			Auth: auth.VaultAuthConfig{
@@ -162,7 +164,9 @@ func TestReadConfigSetsDefaultValues(t *testing.T) {
 
 	expectedConfig := SnapshotAgentConfig{
 		Vault: vault.VaultClientConfig{
-			Url:      "http://127.0.0.1:8200",
+			Nodes: vault.VaultNodesConfig{
+				Urls: []string {"http://127.0.0.1:8200"},
+			},
 			Insecure: false,
 			Timeout:  time.Minute,
 			Auth: auth.VaultAuthConfig{

@@ -39,10 +39,6 @@ type vaultAPIImpl struct {
 func CreateClient(config VaultClientConfig) (*VaultClient, error) {
 	nodes := []string{}
 
-	if config.Url != "" {
-		nodes = append(nodes, config.Url)
-	}
-
 	for _, node := range config.Nodes.Urls {
 		nodes = append(nodes, node)
 	}

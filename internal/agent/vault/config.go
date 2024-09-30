@@ -7,14 +7,13 @@ import (
 )
 
 type VaultClientConfig struct {
-	Url      string           `default:"http://127.0.0.1:8200" validate:"required_without=Nodes,http_url"`
-	Nodes    VaultNodesConfig `validate:"required_without=Url"`
+	Nodes    VaultNodesConfig `validate:"required"`
 	Timeout  time.Duration    `default:"60s"`
 	Insecure bool
 	Auth     auth.VaultAuthConfig
 }
 
 type VaultNodesConfig struct {
-	Urls             []string `validate:"dive,http_url"`
+	Urls             []string `validate:"dive,required,http_url"`
 	AutoDetectLeader bool
 }

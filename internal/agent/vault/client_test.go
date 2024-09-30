@@ -335,9 +335,8 @@ func TestCreateClient(t *testing.T) {
 	node3 := "http://node3"
 
 	config := VaultClientConfig{
-		Url: node1,
 		Nodes: VaultNodesConfig{
-			Urls:             []string{node2, node3},
+			Urls:             []string{node1, node2, node3},
 			AutoDetectLeader: true,
 		},
 		Auth: auth.VaultAuthConfig{
