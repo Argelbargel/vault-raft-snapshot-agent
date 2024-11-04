@@ -93,16 +93,18 @@ func (c *VaultClient) ensureLeader(ctx context.Context) error {
 
 func (c *VaultClient) isConnectedToLeader(ctx context.Context, conn *api.Client) (bool, string) {
 	if conn == nil {
+		logging.Debug("currently not connected")
 		return false, ""
 	}
 
 	if err := c.auth.Refresh(ctx, conn, false); err != nil {
-		logging.Warn("unable to refresh auth", "node", conn.Address())
+		logging.Warn("unable to refresh auth", "node", conn.Address(), "err", err)
 		return false, ""
 	}
 
 	leader, detectedLeader := c.api.GetLeader(ctx, conn)
 	if !c.autoDetectLeader {
+		logging.Debug("ignoring auto-detected-leader due to configuration-setting", "node", conn.Address(), "detectedLeader", detectedLeader)
 		detectedLeader = ""
 	}
 
@@ -113,13 +115,15 @@ func (c *VaultClient) connectToLeader(ctx context.Context, nodes []string) (*api
 	c.connection = nil
 
 	for i, node := range nodes {
+		logging.Debug("connecting...", "node", node)
 		conn, err := c.api.Connect(node)
 		if err != nil {
-			logging.Warn("could not connect to node", "node", node)
+			logging.Warn("could not connect to node", "node", node, "err", err)
 			continue
 		}
 
 		leader, detectedLeader := c.isConnectedToLeader(ctx, conn)
+		logging.Debug("connection established", "node", node, "leader", leader, "detectedLeader", detectedLeader)
 		if leader {
 			return conn, nil
 		}
@@ -143,6 +147,7 @@ func (c *VaultClient) selectNodesToConnect(nodes []string, detectedLeader string
 
 	// when reconnecting, ignore current connected node
 	if c.connection != nil {
+		logging.Debug("ignoring currently connected node", "node", c.connection.Address())
 		nodes = slices.DeleteFunc(nodes, func(node string) bool {
 			return c.connection.Address() == node
 		})
