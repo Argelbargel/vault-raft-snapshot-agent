@@ -2,6 +2,8 @@ package agent
 
 import (
 	"context"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"io"
 	"os"
 	"sync"
@@ -60,6 +62,33 @@ func (c SnapshotAgentConfig) HasStorages() bool {
 func (c SnapshotsConfig) HasStorages() bool {
 	return c.Storages.AWS != nil || c.Storages.Azure != nil || c.Storages.GCP != nil || c.Storages.Local != nil || c.Storages.Swift != nil || c.Storages.S3 != nil
 }
+
+var (
+	lastSnapshotTime = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "vrsa_last_snapshot_time",
+			Help: "Unix timestamp of the last snapshot time",
+		},
+	)
+	nextSnapshotTime = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "vrsa_next_snapshot_time",
+			Help: "Unix timestamp of the next scheduled snapshot time",
+		},
+	)
+	lastSnapshotSuccess = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "vrsa_last_snapshot_success",
+			Help: "Returns 1 if the last snapshot was successful and 0 if not",
+		},
+	)
+	lastSnapshotSize = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "vrsa_last_snapshot_size",
+			Help: "Size of the last snapshot in bytes",
+		},
+	)
+)
 
 func CreateSnapshotAgent(ctx context.Context, options SnapshotAgentOptions) (*SnapshotAgent, error) {
 	data := SnapshotAgentConfig{}
@@ -130,11 +159,13 @@ func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Ticker {
 	a.lastSnapshotTime = time.Now()
 	// ensure that we do not hammer on vault in case of errors
 	nextSnapshot := a.lastSnapshotTime.Add(a.storageConfigDefaults.Frequency)
+	nextSnapshotTime.Set(float64(nextSnapshot.Unix()))
 	a.updateTicker(nextSnapshot)
 
 	snapshot, err := os.CreateTemp(a.tempDir, "snapshot")
 	if err != nil {
 		logging.Warn("Could not create snapshot-temp-file", "nextSnapshot", nextSnapshot, "error", err)
+		lastSnapshotSuccess.Set(0.0)
 		return a.snapshotTicker
 	}
 
@@ -149,21 +180,26 @@ func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Ticker {
 	err = a.client.TakeSnapshot(ctx, snapshot)
 	if err != nil {
 		logging.Error("Could not take snapshot of vault", "nextSnapshot", nextSnapshot, "error", err)
+		lastSnapshotSuccess.Set(0.0)
 		return a.snapshotTicker
 	}
 
 	info, err := snapshot.Stat()
 	if err != nil {
 		logging.Error("Could not stat snapshot-temp-file", "file", snapshot.Name(), "nextSnapshot", nextSnapshot, "error", err)
+		lastSnapshotSuccess.Set(0.0)
 		return a.snapshotTicker
 	}
 
+	lastSnapshotSize.Set(float64(info.Size()))
 	if info.Size() < 1 {
 		logging.Warn("Ignoring empty snapshot", "file", snapshot.Name(), "nextSnapshot", nextSnapshot)
 		return a.snapshotTicker
 	}
 
 	nextSnapshot = a.manager.UploadSnapshot(ctx, snapshot, info.Size(), a.lastSnapshotTime, a.storageConfigDefaults)
+	lastSnapshotTime.Set(float64(a.lastSnapshotTime.Unix()))
+	lastSnapshotSuccess.Set(1.0)
 	return a.updateTicker(nextSnapshot)
 }
 

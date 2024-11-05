@@ -43,15 +43,18 @@ import (
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/logging"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli/v2"
 )
 
 var Version = "development"
 var Platform = "linux/amd64"
+var MetricsPort int
 
 var agentOptions = agent.SnapshotAgentOptions{
 	ConfigFileName:        "snapshots",
@@ -60,10 +63,11 @@ var agentOptions = agent.SnapshotAgentOptions{
 }
 
 const (
-	optionConfig    = "config"
-	optionLogFormat = "log-format"
-	optionLogOutput = "log-output"
-	optionLogLevel  = "log-level"
+	optionConfig      = "config"
+	optionLogFormat   = "log-format"
+	optionLogOutput   = "log-output"
+	optionLogLevel    = "log-level"
+	optionMetricsPort = "metrics-port"
 )
 
 var cliFlags = []cli.Flag{
@@ -93,6 +97,14 @@ var cliFlags = []cli.Flag{
 		Usage:   "log-level for logs; possible values are 'debug', 'info', 'warn' or 'error'",
 		EnvVars: []string{agentOptions.EnvPrefix + "_LOG_LEVEL"},
 		Value:   logging.LevelInfo,
+	},
+	&cli.IntFlag{
+		Name:        optionMetricsPort,
+		Aliases:     []string{"p"},
+		Usage:       "Port to serve metrics on",
+		EnvVars:     []string{agentOptions.EnvPrefix + "_METRICS_PORT"},
+		Value:       2112,
+		Destination: &MetricsPort,
 	},
 }
 
@@ -159,7 +171,18 @@ func run() error {
 		cancel()
 	}()
 
+	// serve metrics in a go routine.
+	go serveMetrics()
 	return runAgent(ctx)
+}
+
+func serveMetrics() {
+	// serve prometheus metrics
+	http.Handle("/metrics", promhttp.Handler())
+	err := http.ListenAndServe(fmt.Sprintf(":%d", MetricsPort), nil)
+	if err != nil {
+		logging.Fatal("failed to setup metrics", "error", err)
+	}
 }
 
 func runAgent(ctx context.Context) error {
