@@ -138,7 +138,7 @@ configuration in either json, yaml or toml.
 
 The Agent monitors the configuration-file for changes and reloads the configuration automatically when the file changes.
 
-#### Example configuration (yaml)
+### Example configuration (yaml)
 
 ```
 vault:
@@ -202,7 +202,7 @@ If automatic leader detection is enabled the response of [vault's /sys/leader-ap
 If you specify multiple urls in `vault.nodes.urls` without enabling `vault.nodes.autoDetectLeader`, the agent contacts each node until one reports that it is is the current leader.
 
 
-### Vault authentication
+#### Vault authentication
 
 To allow Vault Raft Snapshot Agent to take snapshots, you must add a policy that allows read-access to the
 snapshot-apis. This involves the following:
@@ -691,6 +691,25 @@ snapshots:
 Any common [snapshot configuration option](#snapshot-configuration) overrides the global snapshot-configuration.
 
 
+### Metrics Configuration
+
+#### Prometheus Metrics
+##### Minimal Configuration
+
+```
+metrics:
+  prometheus: {}
+```
+
+##### Configuration Options
+
+| Key      | Type   | Required/*Default*              | Description                                                                                                     |
+| ---------| ------ | ------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `port`   | int    | *2112*                          | port on which the metrics are served                                                                            |
+| `path`   | string | */metrics*                      | path under which the metrics are served                                                                         |
+
+
+
 ## License
 
 - Source code is licensed under MIT
@@ -705,3 +724,5 @@ Any common [snapshot configuration option](#snapshot-configuration) overrides th
   from [@alexeiser](https://github.com/Lucretius/vault_raft_snapshot_agent/pull/25)
 - support for Openstack Swift Storage based on code
   from [@Pyjou](https://github.com/Lucretius/vault_raft_snapshot_agent/pull/19)
+- support for Prometheus Metrics based on code
+  from [@anguswilliams](https://github.com/Argelbargel/vault-raft-snapshot-agent/pull/37)

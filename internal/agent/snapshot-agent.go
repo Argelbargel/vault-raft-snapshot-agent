@@ -9,6 +9,7 @@ import (
 
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/logging"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/metrics"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/storage"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/vault"
 )
@@ -17,6 +18,7 @@ import (
 type SnapshotAgentConfig struct {
 	Vault     vault.VaultClientConfig
 	Snapshots SnapshotsConfig
+	Metrics   metrics.CollectorConfig
 }
 
 // SnapshotsConfig configures where snapshots get stored and how often snapshots are made etc.
@@ -42,6 +44,7 @@ type SnapshotAgent struct {
 	storageConfigDefaults storage.StorageConfigDefaults
 	lastSnapshotTime      time.Time
 	snapshotTicker        *time.Ticker
+	metrics               *metrics.Collector
 }
 
 type snapshotAgentVaultAPI interface {
@@ -107,20 +110,34 @@ func (a *SnapshotAgent) reconfigure(ctx context.Context, config SnapshotAgentCon
 		return err
 	}
 
-	a.update(ctx, client, storage.CreateManager(config.Snapshots.Storages), config.Snapshots.StorageConfigDefaults)
-	return nil
+	return a.update(ctx, client, storage.CreateManager(config.Snapshots.Storages), config.Snapshots.StorageConfigDefaults, metrics.CreateCollector(ctx, config.Metrics))
 }
 
-func (a *SnapshotAgent) update(ctx context.Context, client snapshotAgentVaultAPI, manager snapshotManager, defaults storage.StorageConfigDefaults) {
+func (a *SnapshotAgent) update(ctx context.Context, client snapshotAgentVaultAPI, manager snapshotManager, defaults storage.StorageConfigDefaults, metrics *metrics.Collector) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
+
+	if a.metrics != nil {
+		if err := a.metrics.Shutdown(); err != nil {
+			return err
+		}
+	}
 
 	a.client = client
 	a.manager = manager
 	a.storageConfigDefaults = defaults
+	a.metrics = metrics
+
 	nextSnapshot := manager.ScheduleSnapshot(ctx, a.lastSnapshotTime, a.storageConfigDefaults)
 	a.updateTicker(nextSnapshot)
+
+	if err := a.metrics.Start(nextSnapshot); err != nil {
+		return err
+	}
+
 	logging.Debug("Successfully updated configuration", "nextSnapshot", nextSnapshot)
+
+	return nil
 }
 
 func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Ticker {
@@ -128,6 +145,7 @@ func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Ticker {
 	defer a.lock.Unlock()
 
 	a.lastSnapshotTime = time.Now()
+
 	// ensure that we do not hammer on vault in case of errors
 	nextSnapshot := a.lastSnapshotTime.Add(a.storageConfigDefaults.Frequency)
 	a.updateTicker(nextSnapshot)
@@ -135,6 +153,7 @@ func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Ticker {
 	snapshot, err := os.CreateTemp(a.tempDir, "snapshot")
 	if err != nil {
 		logging.Warn("Could not create snapshot-temp-file", "nextSnapshot", nextSnapshot, "error", err)
+		a.metrics.Collect(a.lastSnapshotTime, -1, nextSnapshot)
 		return a.snapshotTicker
 	}
 
@@ -149,12 +168,14 @@ func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Ticker {
 	err = a.client.TakeSnapshot(ctx, snapshot)
 	if err != nil {
 		logging.Error("Could not take snapshot of vault", "nextSnapshot", nextSnapshot, "error", err)
+		a.metrics.Collect(a.lastSnapshotTime, -1, nextSnapshot)
 		return a.snapshotTicker
 	}
 
 	info, err := snapshot.Stat()
 	if err != nil {
 		logging.Error("Could not stat snapshot-temp-file", "file", snapshot.Name(), "nextSnapshot", nextSnapshot, "error", err)
+		a.metrics.Collect(a.lastSnapshotTime, -1, nextSnapshot)
 		return a.snapshotTicker
 	}
 
@@ -164,6 +185,7 @@ func (a *SnapshotAgent) TakeSnapshot(ctx context.Context) *time.Ticker {
 	}
 
 	nextSnapshot = a.manager.UploadSnapshot(ctx, snapshot, info.Size(), a.lastSnapshotTime, a.storageConfigDefaults)
+	a.metrics.Collect(a.lastSnapshotTime, info.Size(), nextSnapshot)
 	return a.updateTicker(nextSnapshot)
 }
 
