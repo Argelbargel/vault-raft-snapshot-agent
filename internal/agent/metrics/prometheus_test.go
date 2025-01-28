@@ -101,10 +101,10 @@ func TestServer(t *testing.T) {
 	size := int64(1000)
 
 	publisher := createPrometheusPublisher(context.Background(), config)
-	publisher.Start()
+	assert.NoError(t, publisher.Start())
 
 	defer func() {
-		publisher.Shutdown()
+		assert.NoError(t, publisher.Shutdown())
 	}()
 
 	publisher.PublishSuccess(last, size)
@@ -145,7 +145,7 @@ vrsa_next_snapshot_time %v
 `,
 			size, float64(last.Unix()), float64(last.Unix()), float64(next.Unix()),
 		),
-		fmt.Sprintf("%s", body),
+		string(body),
 	)
 }
 

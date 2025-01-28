@@ -108,6 +108,9 @@ func (p *prometheusPublisher) Start() error {
 }
 
 func (p *prometheusPublisher) Shutdown() error {
-	p.server.Shutdown(context.Background())
+	err := p.server.Shutdown(context.Background())
+	if !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
 	return nil
 }

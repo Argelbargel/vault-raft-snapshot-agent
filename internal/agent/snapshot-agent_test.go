@@ -38,7 +38,7 @@ func TestTakeSnapshotUploadsSnapshot(t *testing.T) {
 	ctx := context.Background()
 
 	agent := newSnapshotAgent(t.TempDir())
-	agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector)
+	assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector))
 
 	start := time.Now()
 	ticker := agent.TakeSnapshot(ctx)
@@ -67,7 +67,7 @@ func TestTakeSnapshotLocksTakeSnapshot(t *testing.T) {
 	ctx := context.Background()
 
 	agent := newSnapshotAgent(t.TempDir())
-	agent.update(ctx, newClient(clientVaultAPI), &storage.Manager{}, storage.StorageConfigDefaults{}, collector)
+	assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), &storage.Manager{}, storage.StorageConfigDefaults{}, collector))
 
 	start := time.Now()
 
@@ -100,7 +100,7 @@ func TestTakeSnapshotLocksUpdate(t *testing.T) {
 	ctx := context.Background()
 
 	agent := newSnapshotAgent(t.TempDir())
-	agent.update(ctx, newClient(clientVaultAPI), &storage.Manager{}, storage.StorageConfigDefaults{}, collector)
+	assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), &storage.Manager{}, storage.StorageConfigDefaults{}, collector))
 
 	start := time.Now()
 
