@@ -214,7 +214,7 @@ func TestTakeSnapshotIgnoresEmptySnapshot(t *testing.T) {
 	ctx := context.Background()
 
 	agent := newSnapshotAgent(t.TempDir())
-	agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector)
+	assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector))
 
 	ticker := agent.TakeSnapshot(ctx)
 	<-ticker.C
@@ -245,7 +245,7 @@ func TestIgnoresZeroTimeForScheduling(t *testing.T) {
 	ctx := context.Background()
 
 	agent := newSnapshotAgent(t.TempDir())
-	agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector)
+	assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector))
 
 	start := time.Now()
 	ticker := agent.TakeSnapshot(ctx)
@@ -275,12 +275,12 @@ func TestUpdateReschedulesSnapshots(t *testing.T) {
 	ctx := context.Background()
 	agent := newSnapshotAgent(t.TempDir())
 	client := newClient(clientVaultAPI)
-	agent.update(ctx, client, manager, storage.StorageConfigDefaults{}, collector)
+	assert.NoError(t, agent.update(ctx, client, manager, storage.StorageConfigDefaults{}, collector))
 	ticker := agent.TakeSnapshot(ctx)
 
 	updated := make(chan bool, 1)
 	go func() {
-		agent.update(ctx, client, newManager, storage.StorageConfigDefaults{}, collector)
+		assert.NoError(t, agent.update(ctx, client, newManager, storage.StorageConfigDefaults{}, collector))
 		updated <- true
 	}()
 
