@@ -114,7 +114,7 @@ func TestTakeSnapshotLocksUpdate(t *testing.T) {
 
 	go func() {
 		<-running
-		agent.update(ctx, newClient(clientVaultAPI), &storage.Manager{}, storage.StorageConfigDefaults{}, collector)
+		assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), &storage.Manager{}, storage.StorageConfigDefaults{}, collector))
 		done <- true
 	}()
 
@@ -146,7 +146,7 @@ func TestTakeSnapshotFailsWhenTempFileCannotBeCreated(t *testing.T) {
 	ctx := context.Background()
 
 	agent := newSnapshotAgent("./missing")
-	agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector)
+	assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector))
 
 	ticker := agent.TakeSnapshot(ctx)
 	<-ticker.C
@@ -179,7 +179,7 @@ func TestTakeSnapshotFailsWhenSnapshottingFails(t *testing.T) {
 	ctx := context.Background()
 
 	agent := newSnapshotAgent(t.TempDir())
-	agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector)
+	assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector))
 
 	ticker := agent.TakeSnapshot(ctx)
 	<-ticker.C
