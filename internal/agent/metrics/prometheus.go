@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -99,8 +100,8 @@ func (p *prometheusPublisher) PublishFailure(timestamp time.Time) {
 func (p *prometheusPublisher) Start() error {
 	go func() {
 		err := p.server.ListenAndServe()
-		if err != nil {
-			logging.Fatal("failed to setup prometheus metrics", "error", err)
+		if !errors.Is(err, http.ErrServerClosed) {
+			logging.Fatal("failed to serve prometheus metrics", "error", err)
 		}
 	}()
 	return nil
