@@ -87,5 +87,7 @@ snapshots:
       region: test-s3-region
       insecure: true
       skipSSLVerify: true
-
-
+metrics:
+  prometheus: 
+    port: 8080
+    path: /metrics

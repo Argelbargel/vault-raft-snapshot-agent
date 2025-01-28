@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config/secret"
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/metrics"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/test"
 
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/config"
@@ -149,6 +150,12 @@ func TestReadCompleteConfig(t *testing.T) {
 					Insecure:      true,
 					SkipSSLVerify: true,
 				},
+			},
+		},
+		Metrics: metrics.CollectorConfig{
+			Prometheus: &metrics.PrometheusPublisherConfig{
+				Port: 8080,
+				Path: "/metrics",
 			},
 		},
 	}

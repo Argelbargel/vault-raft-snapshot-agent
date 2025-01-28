@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
   workflow_call:
 
+
 permissions:
   contents: read
   pull-requests: read
@@ -25,6 +26,6 @@ jobs:
       uses: reviewdog/action-golangci-lint@v2
       with:
         go_version: '${{ steps.go-version.outputs.version }}'
-        fail_on_error: true
+        fail_level: warning
         reporter: github-check
         golangci_lint_flags: -v --timeout=3m

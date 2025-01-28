@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/metrics"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/storage"
 	"github.com/Argelbargel/vault-raft-snapshot-agent/internal/agent/vault"
 	"github.com/hashicorp/vault/api"
@@ -30,10 +31,14 @@ func TestTakeSnapshotUploadsSnapshot(t *testing.T) {
 	manager := &storage.Manager{}
 	manager.AddStorageFactory(factory)
 
+	publisher := PublisherStub{}
+	collector := &metrics.Collector{}
+	collector.AddPublisher(&publisher)
+
 	ctx := context.Background()
 
 	agent := newSnapshotAgent(t.TempDir())
-	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
+	assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector))
 
 	start := time.Now()
 	ticker := agent.TakeSnapshot(ctx)
@@ -44,6 +49,11 @@ func TestTakeSnapshotUploadsSnapshot(t *testing.T) {
 	assert.Equal(t, defaults, factory.defaults)
 	assert.WithinRange(t, factory.snapshotTimestamp, start, start.Add(50*time.Millisecond))
 	assert.Equal(t, expectedNextSnapshot, factory.nextSnapshot)
+
+	assert.True(t, publisher.started)
+	assert.WithinRange(t, publisher.lastSnapshotTime, start, start.Add(50*time.Millisecond))
+	assert.True(t, publisher.success)
+	assert.Equal(t, expectedNextSnapshot, publisher.nextSnapshotTime)
 }
 
 func TestTakeSnapshotLocksTakeSnapshot(t *testing.T) {
@@ -52,10 +62,12 @@ func TestTakeSnapshotLocksTakeSnapshot(t *testing.T) {
 		snapshotRuntime: time.Millisecond * 500,
 	}
 
+	collector := &metrics.Collector{}
+
 	ctx := context.Background()
 
 	agent := newSnapshotAgent(t.TempDir())
-	agent.update(ctx, newClient(clientVaultAPI), &storage.Manager{}, storage.StorageConfigDefaults{})
+	assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), &storage.Manager{}, storage.StorageConfigDefaults{}, collector))
 
 	start := time.Now()
 
@@ -83,10 +95,12 @@ func TestTakeSnapshotLocksUpdate(t *testing.T) {
 		snapshotRuntime: time.Millisecond * 500,
 	}
 
+	collector := &metrics.Collector{}
+
 	ctx := context.Background()
 
 	agent := newSnapshotAgent(t.TempDir())
-	agent.update(ctx, newClient(clientVaultAPI), &storage.Manager{}, storage.StorageConfigDefaults{})
+	assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), &storage.Manager{}, storage.StorageConfigDefaults{}, collector))
 
 	start := time.Now()
 
@@ -100,7 +114,7 @@ func TestTakeSnapshotLocksUpdate(t *testing.T) {
 
 	go func() {
 		<-running
-		agent.update(ctx, newClient(clientVaultAPI), &storage.Manager{}, storage.StorageConfigDefaults{})
+		assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), &storage.Manager{}, storage.StorageConfigDefaults{}, collector))
 		done <- true
 	}()
 
@@ -127,10 +141,12 @@ func TestTakeSnapshotFailsWhenTempFileCannotBeCreated(t *testing.T) {
 	manager := &storage.Manager{}
 	manager.AddStorageFactory(factory)
 
+	collector := &metrics.Collector{}
+
 	ctx := context.Background()
 
 	agent := newSnapshotAgent("./missing")
-	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
+	assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector))
 
 	ticker := agent.TakeSnapshot(ctx)
 	<-ticker.C
@@ -156,16 +172,25 @@ func TestTakeSnapshotFailsWhenSnapshottingFails(t *testing.T) {
 	manager := &storage.Manager{}
 	manager.AddStorageFactory(factory)
 
+	publisher := PublisherStub{}
+	collector := &metrics.Collector{}
+	collector.AddPublisher(&publisher)
+
 	ctx := context.Background()
 
 	agent := newSnapshotAgent(t.TempDir())
-	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
+	assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector))
 
 	ticker := agent.TakeSnapshot(ctx)
 	<-ticker.C
 
 	assert.True(t, clientVaultAPI.tookSnapshot)
 	assert.Less(t, time.Now(), factory.nextSnapshot.Add(-defaults.Frequency))
+
+	assert.True(t, publisher.started)
+	assert.False(t, publisher.success)
+	assert.NotEmpty(t, publisher.lastSnapshotTime)
+	assert.NotEmpty(t, publisher.nextSnapshotTime)
 }
 
 func TestTakeSnapshotIgnoresEmptySnapshot(t *testing.T) {
@@ -184,10 +209,12 @@ func TestTakeSnapshotIgnoresEmptySnapshot(t *testing.T) {
 	manager := &storage.Manager{}
 	manager.AddStorageFactory(factory)
 
+	collector := &metrics.Collector{}
+
 	ctx := context.Background()
 
 	agent := newSnapshotAgent(t.TempDir())
-	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
+	assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector))
 
 	ticker := agent.TakeSnapshot(ctx)
 	<-ticker.C
@@ -213,10 +240,12 @@ func TestIgnoresZeroTimeForScheduling(t *testing.T) {
 	manager := &storage.Manager{}
 	manager.AddStorageFactory(factory)
 
+	collector := &metrics.Collector{}
+
 	ctx := context.Background()
 
 	agent := newSnapshotAgent(t.TempDir())
-	agent.update(ctx, newClient(clientVaultAPI), manager, defaults)
+	assert.NoError(t, agent.update(ctx, newClient(clientVaultAPI), manager, defaults, collector))
 
 	start := time.Now()
 	ticker := agent.TakeSnapshot(ctx)
@@ -241,15 +270,17 @@ func TestUpdateReschedulesSnapshots(t *testing.T) {
 	newManager := &storage.Manager{}
 	newManager.AddStorageFactory(newFactory)
 
+	collector := &metrics.Collector{}
+
 	ctx := context.Background()
 	agent := newSnapshotAgent(t.TempDir())
 	client := newClient(clientVaultAPI)
-	agent.update(ctx, client, manager, storage.StorageConfigDefaults{})
+	assert.NoError(t, agent.update(ctx, client, manager, storage.StorageConfigDefaults{}, collector))
 	ticker := agent.TakeSnapshot(ctx)
 
 	updated := make(chan bool, 1)
 	go func() {
-		agent.update(ctx, client, newManager, storage.StorageConfigDefaults{})
+		assert.NoError(t, agent.update(ctx, client, newManager, storage.StorageConfigDefaults{}, collector))
 		updated <- true
 	}()
 
@@ -349,4 +380,40 @@ func (stub storageControllerStub) UploadSnapshot(_ context.Context, snapshot io.
 	}
 	stub.factory.uploadData = string(data)
 	return true, stub.factory.nextSnapshot, nil
+}
+
+type PublisherStub struct {
+	lastSnapshotTime time.Time
+	size             int64
+	nextSnapshotTime time.Time
+	success          bool
+	started          bool
+	shutdown         bool
+	startError       error
+	shutdownError    error
+}
+
+func (p *PublisherStub) Start() error {
+	p.started = true
+	return p.startError
+}
+
+func (p *PublisherStub) Shutdown() error {
+	p.shutdown = true
+	return p.shutdownError
+}
+
+func (p *PublisherStub) PublishNextSnapshot(next time.Time) {
+	p.nextSnapshotTime = next
+}
+
+func (p *PublisherStub) PublishSuccess(timestamp time.Time, size int64) {
+	p.lastSnapshotTime = timestamp
+	p.success = true
+	p.size = size
+}
+
+func (p *PublisherStub) PublishFailure(timestamp time.Time) {
+	p.lastSnapshotTime = timestamp
+	p.success = false
 }
