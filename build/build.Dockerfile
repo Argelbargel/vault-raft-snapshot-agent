@@ -1,5 +1,5 @@
 # Image with go build environment
-ARG go_version=1.22
+ARG go_version=1.23
 FROM --platform=$TARGETPLATFORM golang:$go_version AS builder
 
 COPY ./build/build.sh /bin/build.sh
