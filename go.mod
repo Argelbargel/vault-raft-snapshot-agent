@@ -59,10 +59,10 @@ require (
 )
 
 // ensure up-to-date versions (because of known vulnerabilities etc.)
-require golang.org/x/crypto v0.31.0 // indirect
+require golang.org/x/crypto v0.32.0 // indirect
 
 // testing
-require github.com/stretchr/testify v1.9.0
+require github.com/stretchr/testify v1.10.0
 
 require (
 	cloud.google.com/go v0.115.0 // indirect
@@ -97,7 +97,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.5 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
@@ -157,7 +157,7 @@ require (
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/oauth2 v0.22.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
 	google.golang.org/genproto v0.0.0-20240805194559-2c9e96a0b5d4 // indirect
