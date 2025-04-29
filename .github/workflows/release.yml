@@ -13,7 +13,7 @@ concurrency:
 permissions:
   contents: write
   pull-requests: read
-
+  security-events: write
 
 jobs:
   run-checks:
@@ -103,4 +103,3 @@ jobs:
     secrets: inherit
     needs:
     - publish-release
-
