@@ -4,9 +4,14 @@ on:
   workflow_dispatch:
   workflow_call:
 
+
 concurrency:
   group: test-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   run-tests:
@@ -26,4 +31,3 @@ jobs:
     - name: Run tests
       run: |
         go test -v ./...
-

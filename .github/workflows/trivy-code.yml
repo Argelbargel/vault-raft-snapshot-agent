@@ -4,11 +4,15 @@ on:
   workflow_dispatch:
   workflow_call:
   schedule:
-    - cron:  '30 22 * * *'
+  - cron: '30 22 * * *'
 
 concurrency:
   group: trivy-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   trivy:
@@ -25,7 +29,7 @@ jobs:
       uses: aquasecurity/trivy-action@0.30.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2,public.ecr.aws/aquasecurity/trivy-db:2        
+        TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2,public.ecr.aws/aquasecurity/trivy-db:2
       with:
         scan-type: 'fs'
         ignore-unfixed: true

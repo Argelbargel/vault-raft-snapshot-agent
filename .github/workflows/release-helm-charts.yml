@@ -7,6 +7,10 @@ on:
         type: string
         required: true
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   get-latest-release:
     if: inputs.latest_release == '' && startsWith(github.ref, 'refs/tags/v')

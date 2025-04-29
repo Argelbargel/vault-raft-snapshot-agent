@@ -8,6 +8,10 @@ on:
         type: boolean
         default: true
 
+permissions:
+  contents: read
+  pull-requests: read
+
 concurrency:
   group: release-container-${{ github.ref }}
   cancel-in-progress: true
