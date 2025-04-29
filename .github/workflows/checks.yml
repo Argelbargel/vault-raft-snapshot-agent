@@ -3,7 +3,6 @@ name: Run checks
 permissions:
   contents: read
   pull-requests: read
-  security-events: write
 
 on:
   workflow_dispatch:
