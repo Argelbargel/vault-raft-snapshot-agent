@@ -1,8 +1,9 @@
 name: Run checks
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: read
+  security-events: write
 
 on:
   workflow_dispatch:

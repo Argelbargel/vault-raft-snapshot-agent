@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: read
 
 
@@ -24,9 +24,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
     - run-checks
-
-    permissions:
-      contents: write
 
     steps:
     - name: "Checkout repository"
@@ -73,9 +70,6 @@ jobs:
 
     outputs:
       latest-release: ${{ steps.latest-release.outputs.tag_name }}
-
-    permissions:
-      contents: write
 
     steps:
     - name: Get latest release

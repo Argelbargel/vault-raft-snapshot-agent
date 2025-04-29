@@ -11,6 +11,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  packages: write
 
 concurrency:
   group: release-container-${{ github.ref }}
@@ -61,10 +62,6 @@ jobs:
     needs:
     - compile-binaries
     - determine-image-metadata
-
-    permissions:
-      contents: read
-      packages: write
 
     strategy:
       fail-fast: true

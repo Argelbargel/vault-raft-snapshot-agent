@@ -11,16 +11,13 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: read
   security-events: write
 
 jobs:
   trivy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      security-events: write
 
     steps:
     - name: "Checkout repository"
