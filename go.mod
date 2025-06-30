@@ -1,6 +1,6 @@
 module github.com/Argelbargel/vault-raft-snapshot-agent
 
-go 1.23.8
+go 1.23.10
 
 // cli & configuration
 require (
