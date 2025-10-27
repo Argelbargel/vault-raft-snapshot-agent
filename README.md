@@ -204,7 +204,7 @@ If you specify multiple urls in `vault.nodes.urls` without enabling `vault.nodes
 
 #### Vault authentication
 
-To allow Vault Raft Snapshot Agent to take snapshots, you must add a policy that allows read-access to the
+To allow Vault Raft Snapshot Agent to take snapshots, you must add a policy that allows access to the
 snapshot-apis. This involves the following:
 
 1. `vault login` with an admin user.
@@ -213,7 +213,7 @@ snapshot-apis. This involves the following:
 ```hcl
 path "/sys/storage/raft/snapshot"
 {
-  capabilities = ["read"]
+  capabilities = ["create", "read"]
 }
 ```
 
